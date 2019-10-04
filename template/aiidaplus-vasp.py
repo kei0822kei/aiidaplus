@@ -24,14 +24,81 @@ static_params = {
 relax_params = {
     'ediffg': -0.0001,
     'ibrion': 3,
-    'nsw' : 10,
-    'isif': 3
+    # 'nsw' : 10,
+    # 'isif': 3
   }
 
+"""
+# relax_conf parameters
+
+### relax
+  type: Bool, default: False
+  (do not perform relaxations)
+
+### steps
+  type: Int, default: 60
+  (the number of ionic positions updates to perform)
+
+### positions
+  type: Bool, default: True
+  (if relax is True, perform relaxations of the atomic positions)
+
+### shape
+  type: Bool, default: False
+  (if relax is True, perform relaxation of the cell shape)
+
+### volume
+  type: Bool, default: False
+  (if relax is True, perform relaxation of the cell volume)
+
+### convergence_on
+  type: Bool, default: False
+  (do not check or run additional relaxations)
+
+### convergence_absolute
+  type: Bool, default: False
+  (with respect to the previous relaxation)
+    - False: relative tolerances are used (relative convergence)
+    - True: absolute tolerances are used (native VASP units)
+
+### convergence_max_iterations
+  type: Int, default: 5
+  (execute a maximum of five relaxation runs)
+
+### convergence_shape_lengths
+  type: Float, default: 0.1
+  (allow a maximum of 10 % change of the L2 norm for the unitcell vectors
+   from the previous relaxation)
+
+### convergence_shape_angles
+  type: Float, default: 0.1
+  (allow a maximum of 10 % change of the unitcell angles
+   from the previous relaxation)
+
+### convergence_volume
+  type: Float, default: 0.01
+  (allow a maximum of 1 % change of the unitcell volume
+   from the previous relaxation)
+
+### convergence_positions
+  type: Float, default: 0.01
+  (allow a maximum of 1 % displacement (L2 norm) of the positions
+   from the previous relaxation)
+"""
+
 relax_conf = {
-    'relax_positions': True,
-    'relax_shape': True,
-    'relax_volume': True,
+    'relax': True,
+    'steps': 60,
+    'positions': True,
+    'shape': True,
+    'volume': True,
+    'convergence_on': True,
+    'convergence_absolute': False,
+    'convergence_max_iterations': 5,
+    'convergence_shape_lengths': 0.1,
+    'convergence_shape_angles': 0.1,
+    'convergence_volume': 0.01,
+    'convergence_positions': 0.01
   }
 
 
@@ -138,14 +205,29 @@ def main(code, computer, queue, verbose, wf):
 
     ### vasp.relax setting
     if wf == 'relax':
-        inputs.relax = get_data_node('bool', True)
-        inputs.steps = get_data_node('int', 3)
-        # inputs.positions = get_data_node('bool', True)
-        # inputs.shape = get_data_node('bool', True)
-        # inputs.volume = get_data_node('bool', True)
-        inputs.convergence_on = get_data_node('bool', True)
-        # inputs.convergence_positions = get_data_node('float', 0.1)
-        inputs.relax_parameters = get_data_node('dict', dict=relax_params)
+        inputs.relax = \
+                get_data_node('bool', relax_conf['relax'])
+        inputs.positions = \
+                get_data_node('bool', relax_conf['positions'])
+        inputs.shape = \
+                get_data_node('bool', relax_conf['shape'])
+        inputs.volume = \
+                get_data_node('bool', relax_conf['volume'])
+        inputs.convergence_on = \
+                get_data_node('bool', relax_conf['convergence_on'])
+        inputs.convergence_absolute = \
+                get_data_node('bool', relax_conf['convergence_absolute'])
+        inputs.convergence_max_iterations = \
+                get_data_node('int', relax_conf['convergence_max_iterations'])
+        inputs.convergence_shape_lengths = \
+                get_data_node('float', relax_conf['convergence_shape_lengths'])
+        inputs.convergence_shape_angles = \
+                get_data_node('float', relax_conf['convergence_shape_angles'])
+        inputs.convergence_positions = \
+                get_data_node('float', relax_conf['convergence_positions'])
+        inputs.convergence_volume = \
+                get_data_node('float', relax_conf['convergence_volume'])
+        inputs.relax_parmas = get_data_node('dict', relax_params)
 
     ### run
     run(workflow, **inputs)
