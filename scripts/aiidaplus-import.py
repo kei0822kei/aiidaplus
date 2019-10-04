@@ -26,115 +26,115 @@ args = parser.parse_args()
 
 
 # functions
-# def _detect_run_mode(filetype):
-#     """
-#     decide run mode
+def _detect_run_mode(filetype):
+    """
+    decide run mode
+
+        Parameters
+        ----------
+        filetype : str
+
+        Returns
+        -------
+        data_type : str
+            return import data type
+
+        Raises
+        ------
+        ValueError
+            unexpected filetype
+    """
+    if filetype in ['cif', 'poscar']:
+        data_type = 'structure'
+    elif filetype == 'kpoints':
+        data_type = 'kpoints'
+    else:
+        raise ValueError("specified filetype is not supported")
+
+    return data_type
 # 
-#         Parameters
-#         ----------
-#         filetype : str
 # 
-#         Returns
-#         -------
-#         data_type : str
-#             return import data type
-# 
-#         Raises
-#         ------
-#         ValueError
-#             unexpected filetype
-#     """
-#     if filetype in ['cif', 'poscar']:
-#         data_type = 'structure'
-#     if filetype == 'kpoints':
-#         data_type = 'kpoints'
-#     else:
-#         raise ValueError("specified filetype is not supported")
-# 
-#     return data_type
-# 
-# 
-# def import_Kpoints(filename=None, kpoints_string=None):
-#     """
-#     import kpoints data
-# 
-#         Parameters
-#         ----------
-#         filename : str, default None
-#             KPOINTS file
-#         kpoints_string : str, default None
-#             input kpoints string
-# 
-#         Notes
-#         -----
-#         you can input 'filename' or 'kpoints_string'
-#         do not input both
-# 
-#         Raises
-#         ------
-#         ValueError
-#             both 'filename' and 'kpoints_string' are input
-#             both 'filename' and 'kpoints_string' are None
-#     """
-#     def _shape_input_string(kpoints_string):
-#         """
-#         shape input string for kpoints
-# 
-#             Raise
-#             -----
-#             ValueError
-#                 "length <input string> is not 3"
-#                 "unexpected kpoints style specified"
-# 
-#             Returns
-#             -------
-#             kpoints : dict
-#                 ex.
-#                 dict {'mesh'  : [6,6,6],
-#                       'shift' : [0,0.5,0],
-#                       'style' : 'Monkhorst-pack'}
-#         """
-#         lst = kpoints_string.split()
-#         if len(lst) != 3:
-#             raise ValueError("length <input string> is not 3")
-# 
-#         kpoints ={}
-#         kpoints['mesh'] = list(map(int, lst[0].replace(',',' ').split()))
-#         kpoints['shift'] = list(map(float, lst[1].replace(',',' ').split()))
-#         if lst[2] == 'm':
-#             kpoints['style'] = 'Monkhorst'
-#         else:
-#             raise ValueError("unexpected kpoints style specified")
-#         return kpoints
-# 
-#     def _shape_kpoints_file(filename):
-#         """
-#         shape kpoints file
-# 
-#             Returns
-#             -------
-#             kpoints : dict
-#                 ex.
-#                 dict {'mesh'  : [6,6,6],
-#                       'shift' : [0,0.5,0],
-#                       'style' : 'Monkhorst'}
-#         """
-#         from pymatgen.io import vasp as pmgvasp
-#         pmgkpt = pmgvasp.Kpoints.from_file(filename)
-#         kpoints = {}
-#         kpoints['mesh'] = pmgkpt.kpts[0]
-#         kpoints['shift'] = pmgkpt.kpts_shift
-#         kpoints['style'] = pmgkpt.style.name
-#         return kpoints
-# 
-#     if filename is not None and kpoints_string is not None:
-#         raise ValueError("both 'filename' and 'kpoints_string' are input")
-#     if filename is not None:
-#         kpoints = _shape_kpoints_file(filename)
-#     elif kpoints_string is not None:
-#         kpoints = _shape_input_string(kpoints_string)
-#     else:
-#         raise ValueError("both 'filename' and 'kpoints_string' are None")
+def import_Kpoints(filename=None, kpoints_string=None):
+    """
+    import kpoints data
+
+        Parameters
+        ----------
+        filename : str, default None
+            KPOINTS file
+        kpoints_string : str, default None
+            input kpoints string
+
+        Notes
+        -----
+        you can input 'filename' or 'kpoints_string'
+        do not input both
+
+        Raises
+        ------
+        ValueError
+            both 'filename' and 'kpoints_string' are input
+            both 'filename' and 'kpoints_string' are None
+    """
+    def _shape_input_string(kpoints_string):
+        """
+        shape input string for kpoints
+
+            Raise
+            -----
+            ValueError
+                "length <input string> is not 3"
+                "unexpected kpoints style specified"
+
+            Returns
+            -------
+            kpoints : dict
+                ex.
+                dict {'mesh'  : [6,6,6],
+                      'shift' : [0,0.5,0],
+                      'style' : 'Monkhorst-pack'}
+        """
+        lst = kpoints_string.split()
+        if len(lst) != 3:
+            raise ValueError("length <input string> is not 3")
+
+        kpoints ={}
+        kpoints['mesh'] = list(map(int, lst[0].replace(',',' ').split()))
+        kpoints['shift'] = list(map(float, lst[1].replace(',',' ').split()))
+        if lst[2] == 'm':
+            kpoints['style'] = 'Monkhorst'
+        else:
+            raise ValueError("unexpected kpoints style specified")
+        return kpoints
+
+    def _shape_kpoints_file(filename):
+        """
+        shape kpoints file
+
+            Returns
+            -------
+            kpoints : dict
+                ex.
+                dict {'mesh'  : [6,6,6],
+                      'shift' : [0,0.5,0],
+                      'style' : 'Monkhorst'}
+        """
+        from pymatgen.io import vasp as pmgvasp
+        pmgkpt = pmgvasp.Kpoints.from_file(filename)
+        kpoints = {}
+        kpoints['mesh'] = pmgkpt.kpts[0]
+        kpoints['shift'] = pmgkpt.kpts_shift
+        kpoints['style'] = pmgkpt.style.name
+        return kpoints
+
+    if filename is not None and kpoints_string is not None:
+        raise ValueError("both 'filename' and 'kpoints_string' are input")
+    if filename is not None:
+        kpoints = _shape_kpoints_file(filename)
+    elif kpoints_string is not None:
+        kpoints = _shape_input_string(kpoints_string)
+    else:
+        raise ValueError("both 'filename' and 'kpoints_string' are None")
 
 
 
@@ -232,7 +232,7 @@ def main(filename, filetype, kpoints_string, comment):
     print("runmode : %s \n" % run_mode)
 
     # import
-    if run_mode = 'kpoints':
+    if run_mode == 'kpoints':
         import_KpointsData(filename=filename, kpoints_string=kpoints_string)
     if run_mode == 'structure':
         import_StructureData(filename, filetype, comment)
@@ -246,5 +246,5 @@ if __name__ == '__main__':
     print("comment  : %s \n" % str(args.comment))
     main(filename=args.filename,
          filetype=args.filetype,
-         kpoints_string=args.kponts,
+         kpoints_string=args.kpoints,
          comment=args.comment)
