@@ -182,15 +182,15 @@ def import_StructureData(filename, filetype, comment):
         cif = pmgcif.CifParser(filename,
                                occupancy_tolerance=occupancy_tolerance,
                                site_tolerance=site_tolerance)
-        pmgstruct = cif.get_structures(primitive=primitive)
+        pmgstruct = cif.get_structures(primitive=primitive)[0]
     elif filetype == 'poscar':
         from pymatgen.io.vasp import inputs as pmginputs
         poscar = pmginputs.Poscar.from_file(filename)
-        pmgstruct = StructureData(pymatgen_structure=poscar.structure)
+        pmgstruct = poscar.structure
     else:
         raise ValueError("specified filetype is not supported")
 
-    structure = StructureData(pymatgen_structure=poscar.structure)
+    structure = StructureData(pymatgen_structure=pmgstruct)
     structure.store()
     structure.add_comment(comment)
     print("structure data imported")

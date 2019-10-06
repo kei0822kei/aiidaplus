@@ -2,31 +2,55 @@
 
 ### input params
 # structure
-structure_pk = 1324
+structure_pk = 3112
 
-# incar
+# incar for semiconductor or insulator
+# static_params = {
+#     'system': 'test system',
+#     'prec': 'Accurate',
+#     'encut': 500,
+#     'ediff': 1e-6,
+#     'ialgo': 38,
+#     'ismear': 0,
+#     'lcharg': False,
+#     'lwave': False,
+#     # 'lepsilon': True,
+#     # 'icharg': 1,
+#     # 'istart': 1,
+#     'sigma': 0.1,
+#     'gga': 'PS',
+#     'npar': 4
+#   }
+
+
+# incar for metal
 static_params = {
-    'system': 'test system',
+    'system': 'hecagonal Ti',
     'prec': 'Accurate',
-    'encut': 300,
-    'ediff': 1e-8,
+    'addgrid': True,
+    'encut': 375,
+    'ediff': 1e-6,
     'ialgo': 38,
-    'ismear': 0,
+    'ismear': 1,
     'lcharg': False,
+    'lreal': False,
     'lwave': False,
-    # 'nsw': 20,
     # 'lepsilon': True,
     # 'icharg': 1,
     # 'istart': 1,
-    'sigma': 0.1
+    'sigma': 0.4,
+    'gga': 'PS',
+    'npar': 4
   }
+
 
 relax_params = {
     'ediffg': -0.0001,
     'ibrion': 3,
-    # 'nsw' : 10,
-    # 'isif': 3
+    'nsw' : 20,
+    'isif': 3
   }
+
 
 """
 # relax_conf parameters
@@ -88,17 +112,21 @@ relax_params = {
 
 relax_conf = {
     'relax': True,
-    'steps': 60,
-    'positions': True,
-    'shape': True,
-    'volume': True,
+    # 'steps': 60,  # does not work? 2019/10/05
+    # 'positions': True,  # does not work? 2019/10/05
+    # 'shape': True,  # does not work? 2019/10/05
+    # 'volume': True,  # does not work? 2019/10/05
     'convergence_on': True,
     'convergence_absolute': False,
-    'convergence_max_iterations': 5,
-    'convergence_shape_lengths': 0.1,
-    'convergence_shape_angles': 0.1,
-    'convergence_volume': 0.01,
-    'convergence_positions': 0.01
+    'convergence_max_iterations': 3,
+    # 'convergence_shape_lengths': 0.1,
+    'convergence_shape_lengths': 0.5,
+    # 'convergence_shape_angles': 0.1,
+    'convergence_shape_angles': 0.5,
+    # 'convergence_volume': 0.01,
+    'convergence_volume': 0.1,
+    # 'convergence_positions': 0.01
+    'convergence_positions': 0.1
   }
 
 
@@ -106,7 +134,7 @@ relax_conf = {
 # kpoints
 kpoints_params = {
     'mesh' : [6,6,6],
-    'offset' : [0,0,0]
+    'offset' : [0.5,0.5,0.5]
   }
 
 # potcar
@@ -207,12 +235,14 @@ def main(code, computer, queue, verbose, wf):
     if wf == 'relax':
         inputs.relax = \
                 get_data_node('bool', relax_conf['relax'])
-        inputs.positions = \
-                get_data_node('bool', relax_conf['positions'])
-        inputs.shape = \
-                get_data_node('bool', relax_conf['shape'])
-        inputs.volume = \
-                get_data_node('bool', relax_conf['volume'])
+        # inputs.steps = \
+        #         get_data_node('int', relax_conf['steps'])
+        # inputs.positions = \
+        #         get_data_node('bool', relax_conf['positions'])
+        # inputs.shape = \
+        #         get_data_node('bool', relax_conf['shape'])
+        # inputs.volume = \
+        #         get_data_node('bool', relax_conf['volume'])
         inputs.convergence_on = \
                 get_data_node('bool', relax_conf['convergence_on'])
         inputs.convergence_absolute = \
@@ -227,7 +257,8 @@ def main(code, computer, queue, verbose, wf):
                 get_data_node('float', relax_conf['convergence_positions'])
         inputs.convergence_volume = \
                 get_data_node('float', relax_conf['convergence_volume'])
-        inputs.relax_parmas = get_data_node('dict', relax_params)
+        inputs.relax_parameters = get_data_node('dict', dict=relax_params)
+        inputs.clean_workdir = get_data_node('bool', False)
 
     ### run
     run(workflow, **inputs)
