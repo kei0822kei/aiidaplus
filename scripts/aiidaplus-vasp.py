@@ -118,7 +118,7 @@ def main(code, computer, queue, verbose, wf, params_yaml):
         return workflow
 
     def _set_computer_code(builder, code, computer):
-        if code in ['vasp', 'relax']:
+        if code in ['vasp544mpi', 'relax']:
             builder.code = Code.get_from_string('{}@{}'.format(code, computer))
         elif code in ['phonon']:
             builder.code_string = Code.get_from_string('{}@{}'.format(code, computer))
