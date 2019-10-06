@@ -10,7 +10,7 @@ from aiida.cmdline.utils.decorators import with_dbenv
 parser = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-wf', '--workflow', type=str,
-    default='vasp', help="choose workflow, 'vasp'(default) or 'relax'")
+    default='vasp', help="choose workflow, 'vasp'(default), 'relax' or 'phonon'")
 parser.add_argument('--code', type=str,
     default=None, help="input code ex. 'vasp544mpi'")
 parser.add_argument('--computer', type=str,
@@ -94,9 +94,13 @@ def main(code, computer, queue, verbose, wf, params_yaml):
     from yaml import CLoader as Loader
     from aiida.orm import Code, load_node
     from aiida.plugins import WorkflowFactory
-    from aiida.engine import run
+    from aiida.engine import run, submit
     from aiida.common.extendeddicts import AttributeDict
     from aiida_vasp.utils.aiida_utils import get_data_class, get_data_node
+
+    def _unexpected_code(wf):
+        if wf is not ['vasp', 'relax', 'phonon']:
+            raise ValueError("unexpected workflow: %s" % wf)
 
     def _load_yaml(filename):
         data = yaml.load(open(filename), Loader=Loader)
@@ -107,12 +111,17 @@ def main(code, computer, queue, verbose, wf, params_yaml):
             workflow = WorkflowFactory('vasp.vasp')
         elif wf =='relax':
             workflow = WorkflowFactory('vasp.relax')
+        elif wf == 'phonon':
+            workflow = WorkflowFactory('phonopy.phonon')
         else:
-            raise ValueError("unexpected workflow: %s" % wf)
+            _unexpected_code(code)
         return workflow
 
     def _set_computer_code(builder, code, computer):
-        builder.code = Code.get_from_string('{}@{}'.format(code, computer))
+        if code in ['vasp', 'relax']:
+            builder.code = Code.get_from_string('{}@{}'.format(code, computer))
+        elif code in ['phonon']:
+            builder.code_string = Code.get_from_string('{}@{}'.format(code, computer))
 
     def _set_clean_workdir(builder, clean_workdir):
         builder.clean_workdir = get_data_node('bool', clean_workdir)
@@ -194,7 +203,9 @@ def main(code, computer, queue, verbose, wf, params_yaml):
     _set_clean_workdir(builder, params['clean_workdir'])
 
     ### run
+    # run(workflow, **builder)
     run(workflow, **builder)
+    # submit(workflow, **builder)
 
 
 if __name__ == '__main__':

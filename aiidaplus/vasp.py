@@ -64,7 +64,9 @@ def default_params(filetype, is_metal):
                   }
             else:
                 static_opt = {
-                     'ismear': -5
+                     # 'ismear': -5
+                     'ismear': 0,
+                     'sigma': 0.01,
                   }
             incar_dic['incar_base'].update(static_opt)
 

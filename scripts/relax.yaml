@@ -1,0 +1,45 @@
+clean_workdir: false
+incar:
+    incar_base:
+        addgrid: true
+        ediff: 1.0e-06
+        encut: 375
+        gga: PS
+        ialgo: 38
+        ismear: 0
+        lcharg: false
+        lreal: false
+        lwave: false
+        npar: 4
+        prec: Accurate
+        sigma: 0.01
+        system: system name
+    incar_relax:
+        ediffg: -0.0001
+        ibrion: 2
+        isif: 3
+        nsw: 20
+kpoints:
+    mesh:
+    - 6
+    - 6
+    - 6
+    offset:
+    - 0.5
+    - 0.5
+    - 0.5
+potcar:
+    potential_family: PBE.54
+    potential_mapping:
+        As: As
+        Ga: Ga
+relax_conf:
+    convergence_absolute: false
+    convergence_max_iterations: 3
+    convergence_on: true
+    convergence_positions: 0.1
+    convergence_shape_angles: 0.5
+    convergence_shape_lengths: 0.5
+    convergence_volume: 0.1
+    relax: true
+structure_pk: 1324
