@@ -16,7 +16,7 @@ parser.add_argument('-f', '--filename', type=str, default=None,
     help="input file name \n\n")
 parser.add_argument('-k', '--kpoints', type=str, default=None,
     help="import kpoints from command line \n"
-         "if you use this option, it's not necessary to specify the other options"
+         "if you use this option, it's not necessary to specify the other options "
          "ex. '6,6,6 0.5,0.5,0 m' \n\n")
 parser.add_argument('-t', '--filetype', type=str, default=None,
     help="input file type, currently supported 'cif' or 'poscar' \n\n")
