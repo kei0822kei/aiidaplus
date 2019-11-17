@@ -7,8 +7,10 @@ aiida-vasp calculation toolkits
 definitions which help aiida-vasp calculation
 """
 import numpy as np
+from aiida.orm import load_node
+from aiida.orm.nodes.data import KpointsData
 
-def default_params(filetype, is_metal):
+def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
     """
     description of this method
 
@@ -20,6 +22,12 @@ def default_params(filetype, is_metal):
         is_metal : bool
             if structure is metallic, choose True
             otherwise, choose False
+        structure_pk : int, default None
+            if you set 'structure_pk', set stucture
+        kdensity : float, default None
+            if you set 'kdensity' and 'structure_pk',
+            consider the density of kpoints.
+            INCLUDED 2 pi
 
         Returns
         -------
@@ -38,8 +46,19 @@ def default_params(filetype, is_metal):
         dic['label'] = "this is label"
         dic['description'] = "this is description"
 
-    def _structure(dic):
-        dic['structure_pk'] = 'structure pk (int)'
+    def _structure(dic, structure_pk):
+        if structure_pk is None:
+            dic['structure_pk'] = 'structure pk (int)'
+        else:
+            structure_node = load_node(structure_pk)
+            pmgstruct = structure_node.get_pymatgen_structure()
+            print("lattice:")
+            print(pmgstruct.lattice)
+            print('symbols:')
+            print(structure_node.get_symbols_set())
+            print("atoms:")
+            print(len(pmgstruct.frac_coords))
+            dic['structure_pk'] = structure_pk
 
     def _clean_workingdir(dic):
         dic['clean_workdir'] = False
@@ -87,11 +106,28 @@ def default_params(filetype, is_metal):
         __incar_params_base(dic['incar'], is_metal)
         # __incar_params_relax(dic['incar'])
 
-    def _kpoints(dic):
-        dic['kpoints'] = {
-              'mesh' : [6,6,6],
-              'offset' : [0.5,0.5,0.5]
-            }
+    def _kpoints(dic, structure_pk, kdensity):
+        if kdensity is not None:
+             kdata = KpointsData()
+             structure_node = load_node(structure_pk)
+             kdata.set_cell_from_structure(structure_node)
+             print("kdensity is: %s" % str(kdensity))
+             print("reciprocal lattice (included 2*pi) is:")
+             print(kdata.reciprocal_cell)
+             print("set kpoints mesh as:")
+             kdata.set_kpoints_mesh_from_density(
+                     kdensity, offset=[0.5,0.5,0.5])
+             kmesh = kdata.get_kpoints_mesh()
+             print(kmesh[0])
+             dic['kpoints'] = {
+                   'mesh': kmesh[0],
+                   'offset': kmesh[1]
+                 }
+        else:
+            dic['kpoints'] = {
+                  'mesh' : [6,6,6],
+                  'offset' : [0.5,0.5,0.5]
+                }
         if filetype == 'phonon':
             dic['kpoints']['mesh_fc2'] = [2,2,2]
             dic['kpoints']['mesh_nac'] = [12,12,12]
@@ -108,9 +144,9 @@ def default_params(filetype, is_metal):
     def _relax_conf(dic):
         if filetype == 'relax':
             dic['relax_conf'] = {
-                'relax': True,
-                'energy_cutoff': 1e-8,  # default, False
-                'force_cutoff': 1e-8,  # default, False
+                'perform': True,
+                'energy_cutoff': 1e-6,  # default, False
+                'force_cutoff': 1e-4,  # default, False
                 'steps': 20,  # default, 60
                 'positions': True,
                 'shape': True,
@@ -137,10 +173,10 @@ def default_params(filetype, is_metal):
 
     dic = {}
     _label_descrip(dic)
-    _structure(dic)
+    _structure(dic, structure_pk)
     _clean_workingdir(dic)
     _incar_params(dic, is_metal)
-    _kpoints(dic)
+    _kpoints(dic, structure_pk, kdensity)
     _potcar(dic)
     _relax_conf(dic)
     _phonon_conf(dic)

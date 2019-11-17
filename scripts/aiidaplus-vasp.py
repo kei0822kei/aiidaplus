@@ -5,6 +5,7 @@ import yaml
 from aiidaplus import vasp as apvasp
 import argparse
 from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.common.extendeddicts import AttributeDict
 
 # argparse
 parser = argparse.ArgumentParser(
@@ -15,15 +16,20 @@ parser.add_argument('--code', type=str,
     default=None, help="input code ex. 'vasp544mpi', 'phononpy'")
 parser.add_argument('--computer', type=str,
     default=None, help="input computer ex. 'vega'")
+parser.add_argument('--kdensity', type=float,
+    default=None, help="this arg is used when 'get_setting' is specified \n \
+specified kpoints density is INCLUDED 2*pi")
 parser.add_argument('--get_settings', type=str,
     default=None, help="get setting file, you don't have to set another parser \n \
-                        input strings are \n \
+input strings are \n \
                         'filetype' 'is_metal' 'filename' \n \
-                          filetype: choose from 'oneshot' 'relax' 'phonon'\n \
-                          is_metal: bool \n \
-                          filename: output filename")
+                           filetype: choose from 'oneshot' 'relax' 'phonon'\n \
+                           is_metal: bool \n \
+                           filename: output filename")
 parser.add_argument('--params_yaml', type=str,
     default=None, help="yaml file which contains parameters")
+parser.add_argument('--structure_pk', type=int,
+    default=None, help="this arg is used when 'get_setting' is specified")
 parser.add_argument('--queue', type=str,
     default='', help="queue name, default None")
 parser.add_argument('--verbose', action='store_true',
@@ -56,7 +62,8 @@ def _is_metal(arg_is_metal):
         raise ValueError("input arg 'is_metal' os not 'True' or 'False'")
     return is_metal
 
-def export_setting(filetype, is_metal, filename):
+@with_dbenv()
+def export_setting(filetype, is_metal, filename, structure_pk, kdensity):
     """
     get aiidaplus-vasp.yaml file
 
@@ -70,6 +77,12 @@ def export_setting(filetype, is_metal, filename):
             otherwise, choose False
         filename : str
             export file name
+        structure_pk : int, default None
+            if you set 'structure_pk', set stucture
+        kdensity : float, default None
+            if you set 'kdensity' and 'structure_pk',
+            consider the density of kpoints.
+            INCLUDED 2 pi
 
         Returns
         -------
@@ -83,7 +96,7 @@ def export_setting(filetype, is_metal, filename):
         ------
         ValueError
     """
-    params = apvasp.default_params(filetype, is_metal)
+    params = apvasp.default_params(filetype, is_metal, structure_pk, kdensity)
     if os.path.exists(filename):
         print("file %s already exsists, overwrite file" % filename)
     with open(filename, 'w') as f:
@@ -174,48 +187,51 @@ def main(code, computer, queue, verbose, wf, params_yaml):
 
     def _set_relax_conf(builder):
         if wf == 'relax':
+            relax_conf = AttributeDict()
             keys = params['relax_conf'].keys()
-            builder.relax = \
-                    get_data_node('bool', params['relax_conf']['relax'])
+            if 'perform' in keys:
+                relax_conf.perform = \
+                        get_data_node('bool', params['relax_conf']['perform'])
             if 'energy_cutoff' in keys:
-                builder.energy_cutoff = \
+                relax_conf.energy_cutoff = \
                         get_data_node('float', params['relax_conf']['energy_cutoff'])
             if 'force_cutoff' in keys:
-                builder.force_cutoff = \
+                relax_conf.force_cutoff = \
                         get_data_node('float', params['relax_conf']['force_cutoff'])
             if 'steps' in keys:
-                builder.steps = \
+                relax_conf.steps = \
                         get_data_node('int', params['relax_conf']['steps'])
             if 'positions' in keys:
-                builder.positions = \
+                relax_conf.positions = \
                         get_data_node('bool', params['relax_conf']['positions'])
             if 'shape' in keys:
-                builder.shape = \
+                relax_conf.shape = \
                         get_data_node('bool', params['relax_conf']['shape'])
             if 'volume' in keys:
-                builder.volume = \
+                relax_conf.volume = \
                         get_data_node('bool', params['relax_conf']['volume'])
             if 'convergence_on' in keys:
-                builder.convergence_on = \
+                relax_conf.convergence_on = \
                         get_data_node('bool', params['relax_conf']['convergence_on'])
             if 'convergence_absolute' in keys:
-                builder.convergence_absolute = \
+                relax_conf.convergence_absolute = \
                         get_data_node('bool', params['relax_conf']['convergence_absolute'])
             if 'convergence_max_iterations' in keys:
-                builder.convergence_max_iterations = \
+                relax_conf.convergence_max_iterations = \
                         get_data_node('int', params['relax_conf']['convergence_max_iterations'])
             if 'convergence_shape_lengths' in keys:
-                builder.convergence_shape_lengths = \
+                relax_conf.convergence_shape_lengths = \
                         get_data_node('float', params['relax_conf']['convergence_shape_lengths'])
             if 'convergence_shape_angles' in keys:
-                builder.convergence_shape_angles = \
+                relax_conf.convergence_shape_angles = \
                         get_data_node('float', params['relax_conf']['convergence_shape_angles'])
             if 'convergence_positions' in keys:
-                builder.convergence_positions = \
+                relax_conf.convergence_positions = \
                         get_data_node('float', params['relax_conf']['convergence_positions'])
             if 'convergence_volume' in keys:
-                builder.convergence_volume = \
+                relax_conf.convergence_volume = \
                         get_data_node('float', params['relax_conf']['convergence_volume'])
+            builder.relax = relax_conf
 
     def _set_phonon(builder):
         def __get_config(is_nac):
@@ -300,7 +316,11 @@ def main(code, computer, queue, verbose, wf, params_yaml):
 if __name__ == '__main__':
     if args.get_settings is not None:
         parsers = args.get_settings.split()
-        export_setting(parsers[0], _is_metal(parsers[1]), parsers[2])
+        export_setting(parsers[0],
+                       _is_metal(parsers[1]),
+                       parsers[2],
+                       args.structure_pk,
+                       args.kdensity)
     else:
         main(code=args.code, computer=args.computer, queue=args.queue,
              verbose=args.verbose, wf=args.workflow, params_yaml=args.params_yaml)
