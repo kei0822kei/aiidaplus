@@ -161,7 +161,7 @@ def main(code, computer, queue, verbose, wf, params_yaml):
         options.resources = {'tot_num_mpiprocs': tot_num_mpiprocs,
                              'parallel_env': 'mpi*'}
         options.queue_name = queue
-        options.max_wallclock_seconds = 3600
+        options.max_wallclock_seconds = params['options']['max_wallclock_seconds']
         builder.options = get_data_node('dict', dict=options)
 
     def _set_incar(builder):
@@ -310,7 +310,9 @@ def main(code, computer, queue, verbose, wf, params_yaml):
 
     ### run
     # run(workflow, **builder)
-    submit(workflow, **builder)
+    future = submit(workflow, **builder)
+    print(future)
+    print('Running workchain with pk={}'.format(future.pk))
 
 
 if __name__ == '__main__':

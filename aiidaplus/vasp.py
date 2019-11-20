@@ -75,30 +75,29 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
         dic['clean_workdir'] = False
 
     def _incar_params(dic, is_metal, get_encut_from_structure=False):
-        def __get_encut():
-            if get_encut_from_structure:
-                print("set encut from structure")
-                encut_file = os.path.join(
-                        os.path.dirname(os.path.dirname(__file__)),
-                        'potcar',
-                        'encut_'+dic['potcar']['potential_family']+'.yaml')
-                encuts_db = yaml.load(open(encut_file), Loader=Loader)
-                max_encut = max([ encuts_db[key] for key
-                        in dic['potcar']['potential_mapping'] ])
-                print("max_encut was %s" % str(max_encut))
-                print("multiply by 1.3")
-                encut = int(max_encut * 1.3)
-                print("set encut: %s" % str(encut))
-                return encut
-            else:
-                print("encut in incar parameters are set automatically '375'")
-                encut = 375
-            return encut
-
 
         def __incar_params_base(incar_dic, is_metal):
+            def __get_encut():
+                if get_encut_from_structure:
+                    print("set encut from structure")
+                    encut_file = os.path.join(
+                            os.path.dirname(os.path.dirname(__file__)),
+                            'potcar',
+                            'encut_'+dic['potcar']['potential_family']+'.yaml')
+                    encuts_db = yaml.load(open(encut_file), Loader=Loader)
+                    max_encut = max([
+                        encuts_db[dic['potcar']['potential_mapping'][key]] for key
+                        in dic['potcar']['potential_mapping'] ])
+                    print("max_encut was %s" % str(max_encut))
+                    print("multiply by 1.3")
+                    encut = int(max_encut * 1.3)
+                    print("set encut: %s" % str(encut))
+                else:
+                    print("encut in incar parameters are set automatically '375'")
+                    encut = 375
+                return encut
+
             incar_dic['incar_base'] = {
-                     'system': 'system name',
                      'prec': 'Accurate',
                      'addgrid': True,
                      'ediff': 1e-6,
@@ -123,9 +122,9 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
                      'sigma': 0.01,
                   }
             incar_dic['incar_base'].update(static_opt)
+            incar_dic['incar_base'].update({'encut': __get_encut()})
 
         dic['incar'] = {}
-        dic['incar']['encut'] = __get_encut()
         __incar_params_base(dic['incar'], is_metal)
 
     def _kpoints(dic, structure_data, kdensity):
@@ -153,6 +152,9 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
             dic['kpoints']['mesh_fc2'] = [2,2,2]
             dic['kpoints']['mesh_nac'] = [12,12,12]
 
+    def _options(dic):
+        dic['options'] = {'max_wallclock_seconds':  36000}
+
     def _potcar(dic, structure_data):
         if structure_data is not None:
             default_potcar_file = os.path.join(
@@ -178,7 +180,8 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
         if filetype == 'relax':
             dic['relax_conf'] = {
                 'perform': True,
-                'energy_cutoff': 1e-6,  # default, False
+                # 'energy_cutoff': 1e-6,  # default, False,
+                #                  if you choose 'force_cutoff', 'energy_cutoff' is ignored
                 'force_cutoff': 1e-4,  # default, False
                 'steps': 20,  # default, 60
                 'positions': True,
@@ -211,6 +214,7 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
     _clean_workingdir(dic)
     _kpoints(dic, structure_data, kdensity)
     _potcar(dic, structure_data)
+    _options(dic)
     if structure_pk is None:
         _incar_params(dic, is_metal, get_encut_from_structure=False)
     else:
