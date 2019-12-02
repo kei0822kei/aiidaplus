@@ -6,37 +6,46 @@ from aiidaplus import vasp as apvasp
 import argparse
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.extendeddicts import AttributeDict
+from aiida.orm import Code, Group, load_node
 
-# argparse
-parser = argparse.ArgumentParser(
-    description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('-wf', '--workflow', type=str,
-    default='vasp', help="choose workflow, 'vasp'(default), 'relax' or 'phonon'")
-parser.add_argument('--code', type=str,
-    default=None, help="input code ex. 'vasp544mpi', 'phononpy'")
-parser.add_argument('--computer', type=str,
-    default=None, help="input computer ex. 'vega'")
-parser.add_argument('--kdensity', type=float,
-    default=None, help="this arg is used when 'get_setting' is specified \n \
-specified kpoints density is INCLUDED 2*pi")
-parser.add_argument('--group', type=str,
-    default=None, help="add nodes to specified group")
-parser.add_argument('--get_settings', type=str,
-    default=None, help="get setting file, you don't have to set another parser \n \
-input strings are \n \
-                        'filetype' 'is_metal' 'filename' \n \
-                           filetype: choose from 'oneshot' 'relax' 'phonon'\n \
-                           is_metal: bool \n \
-                           filename: output filename")
-parser.add_argument('--params_yaml', type=str,
-    default=None, help="yaml file which contains parameters")
-parser.add_argument('--structure_pk', type=int,
-    default=None, help="this arg is used when 'get_setting' is specified")
-parser.add_argument('--queue', type=str,
-    default='', help="queue name, default None")
-parser.add_argument('--verbose', action='store_true',
-    default=False, help="show detail")
-args = parser.parse_args()
+def get_argparse():
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-wf', '--workflow', type=str,
+        default='vasp', help="choose workflow, 'vasp'(default), 'relax' or 'phonon'")
+    parser.add_argument('--code', type=str,
+        default=None, help="input code ex. 'vasp544mpi', 'phononpy'")
+    parser.add_argument('--computer', type=str,
+        default=None, help="input computer ex. 'vega'")
+    parser.add_argument('--kdensity', type=float,
+        default=None, help="this arg is used when 'get_setting' is specified \n \
+    specified kpoints density is INCLUDED 2*pi")
+    parser.add_argument('--group', type=str,
+        default=None, help="add nodes to specified group")
+    parser.add_argument('--get_settings', type=str,
+        default=None, help="get setting file, you don't have to set another parser \n \
+    input strings are \n \
+                            'filetype' 'is_metal' 'filename' \n \
+                               filetype: choose from 'oneshot' 'relax' 'phonon'\n \
+                               is_metal: bool \n \
+                               filename: output filename")
+    parser.add_argument('--params_yaml', type=str,
+        default=None, help="yaml file which contains parameters")
+    parser.add_argument('--structure_pk', type=int,
+        default=None, help="this arg is used when 'get_setting' is specified")
+    parser.add_argument('--queue', type=str,
+        default='', help="queue name, default None")
+    parser.add_argument('--verbose', action='store_true',
+        default=False, help="show detail")
+    args = parser.parse_args()
+    return args
+
+def check_group_existing(group):
+    print("------------------------------------------")
+    print("check group '%s' exists" % group)
+    print("------------------------------------------")
+    test_grp = Group.get(label=group)
+    print("OK\n")
 
 def _is_metal(arg_is_metal):
     """
@@ -107,7 +116,6 @@ def export_setting(filetype, is_metal, filename, structure_pk, kdensity):
 @with_dbenv()
 def main(code, computer, queue, verbose, wf, params_yaml, group=None):
     from yaml import CLoader as Loader
-    from aiida.orm import Code, Group, load_node
     from aiida.plugins import WorkflowFactory
     from aiida.engine import run, submit
     from aiida.common.extendeddicts import AttributeDict
@@ -116,24 +124,10 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
     tot_num_mpiprocs = 16
 
     def _add_node_to_group(running_pk, group):
-        # try:
-        #     grp = Group.get(label=group)
-        # except:
-        #     create_grp = Group(label=group)
-        #     ctreate_grp.store()
-        #     print("group %s did not exist, newly created" % group)
-        #     grp = Group.get(label=group)
         grp = Group.get(label=group)
         running_node = load_node(running_pk)
         grp.add_nodes(running_node)
         print("pk {0} is added to group '{1}'".format(running_pk, group))
-
-    def _check_group_existing(group):
-        print("------------------------------------------")
-        print("check group '%s' exists" % group)
-        print("------------------------------------------")
-        test_grp = Group.get(label=group)
-        print("OK")
 
     def _unexpected_workflow():
         if wf is not ['vasp', 'relax', 'phonon']:
@@ -158,7 +152,6 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
         if code in ['vasp544mpi', 'relax']:
             builder.code = Code.get_from_string('{}@{}'.format(code, computer))
         elif code in ['phonopy']:
-            # builder.code_string = Code.get_from_string('{}@{}'.format(code, computer))
             builder.code_string = get_data_node('str', '{}@{}'.format(code, computer))
         else:
             raise ValueError("unexpected code: %s" % wf)
@@ -190,9 +183,6 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
         if code in ['vasp544mpi', 'relax']:
             builder.parameters = get_data_node(
                     'dict', dict=params['incar']['incar_base'])
-            # if wf == 'relax':
-            #     builder.relax_parameters = get_data_node(
-            #             'dict', dict=params['incar']['incar_relax'])
 
     def _set_description(builder):
         builder.metadata.description = params['description']
@@ -315,7 +305,7 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
 
     ### build
     if group is not None:
-        _check_group_existing(group)
+        check_group_existing(group)
     params = _load_yaml(params_yaml)
     workflow = _get_workflow()
     builder = workflow.get_builder()
@@ -343,6 +333,7 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
 
 
 if __name__ == '__main__':
+    args = get_argparse()
     if args.get_settings is not None:
         parsers = args.get_settings.split()
         export_setting(parsers[0],

@@ -16,31 +16,24 @@ from aiidaplus import plot as aiidaplot
 from pprint import pprint
 
 # argparse
-parser = argparse.ArgumentParser(
-    description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('-pk', '--node_pk', type=int, default=None,
-    help="node pk, currently supported StructureData")
-parser.add_argument('--get_data', action='store_true',
-    help="get data")
-parser.add_argument('--show', action='store_true',
-    help="show the detailed information of data")
-args = parser.parse_args()
+def get_argparse():
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-pk', '--node_pk', type=int, default=None,
+        help="node pk, currently supported StructureData")
+    parser.add_argument('--get_data', action='store_true',
+        help="get data")
+    parser.add_argument('--show', action='store_true',
+        help="show the detailed information of data")
+    args = parser.parse_args()
+    return args
 
 # functions
 def _export_structure(pk, node, get_data, show):
+    aiidaplus_structure = __import__("aiidaplus-structure")
     structure = node.get_pymatgen_structure()
-    poscar = pmgvasp.Poscar(structure)
     if show:
-        print('Object Type: StructureData')
-        print('Lattice')
-        print(structure.lattice)
-        print('Site Symbols')
-        print(poscar.site_symbols)
-        print('Number of Atoms')
-        print(poscar.natoms)
-        print('Space Group')
-        print(structure.get_space_group_info())
-
+        aiidaplus_structure.get_description(structure)
     if get_data:
         poscar.write_file('pk'+str(pk)+'.poscar')
 
@@ -126,8 +119,6 @@ def _export_relax(pk, node, get_data, show):
         plt.savefig('relaxworkchain_pk'+str(pk)+'.png')
         plt.show()
 
-
-
 @with_dbenv()
 def main(pk, get_data=False, show=False):
     """
@@ -167,4 +158,5 @@ def main(pk, get_data=False, show=False):
 
 
 if __name__ == '__main__':
+    args = get_argparse()
     main(args.node_pk, args.get_data, args.show)
