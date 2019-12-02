@@ -304,6 +304,7 @@ def main(code, computer, queue, verbose, wf, params_yaml):
     _set_relax_conf(builder)
     _set_verbose(builder)
     _set_clean_workdir(builder)
+    _set_description(builder)
     _set_label(builder)
     _set_settings(builder)
     _set_phonon(builder)
