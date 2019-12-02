@@ -19,6 +19,8 @@ parser.add_argument('--computer', type=str,
 parser.add_argument('--kdensity', type=float,
     default=None, help="this arg is used when 'get_setting' is specified \n \
 specified kpoints density is INCLUDED 2*pi")
+parser.add_argument('--group', type=str,
+    default=None, help="add nodes to specified group")
 parser.add_argument('--get_settings', type=str,
     default=None, help="get setting file, you don't have to set another parser \n \
 input strings are \n \
@@ -103,15 +105,35 @@ def export_setting(filetype, is_metal, filename, structure_pk, kdensity):
         yaml.dump(params, f, indent=4, default_flow_style=False)
 
 @with_dbenv()
-def main(code, computer, queue, verbose, wf, params_yaml):
+def main(code, computer, queue, verbose, wf, params_yaml, group=None):
     from yaml import CLoader as Loader
-    from aiida.orm import Code, load_node
+    from aiida.orm import Code, Group, load_node
     from aiida.plugins import WorkflowFactory
     from aiida.engine import run, submit
     from aiida.common.extendeddicts import AttributeDict
     from aiida_vasp.utils.aiida_utils import get_data_class, get_data_node
 
     tot_num_mpiprocs = 16
+
+    def _add_node_to_group(running_pk, group):
+        # try:
+        #     grp = Group.get(label=group)
+        # except:
+        #     create_grp = Group(label=group)
+        #     ctreate_grp.store()
+        #     print("group %s did not exist, newly created" % group)
+        #     grp = Group.get(label=group)
+        grp = Group.get(label=group)
+        running_node = load_node(running_pk)
+        grp.add_nodes(running_node)
+        print("pk {0} is added to group '{1}'".format(running_pk, group))
+
+    def _check_group_existing(group):
+        print("------------------------------------------")
+        print("check group '%s' exists" % group)
+        print("------------------------------------------")
+        test_grp = Group.get(label=group)
+        print("OK")
 
     def _unexpected_workflow():
         if wf is not ['vasp', 'relax', 'phonon']:
@@ -292,6 +314,8 @@ def main(code, computer, queue, verbose, wf, params_yaml):
             builder.verbose = get_data_node('bool', verbose)
 
     ### build
+    if group is not None:
+        _check_group_existing(group)
     params = _load_yaml(params_yaml)
     workflow = _get_workflow()
     builder = workflow.get_builder()
@@ -314,6 +338,8 @@ def main(code, computer, queue, verbose, wf, params_yaml):
     future = submit(workflow, **builder)
     print(future)
     print('Running workchain with pk={}'.format(future.pk))
+    if group is not None:
+        _add_node_to_group(future.pk, group)
 
 
 if __name__ == '__main__':
@@ -325,5 +351,10 @@ if __name__ == '__main__':
                        args.structure_pk,
                        args.kdensity)
     else:
-        main(code=args.code, computer=args.computer, queue=args.queue,
-             verbose=args.verbose, wf=args.workflow, params_yaml=args.params_yaml)
+        main(code=args.code,
+             computer=args.computer,
+             group=args.group,
+             queue=args.queue,
+             verbose=args.verbose,
+             wf=args.workflow,
+             params_yaml=args.params_yaml)
