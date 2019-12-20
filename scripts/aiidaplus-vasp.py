@@ -248,7 +248,7 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
     def _set_phonon(builder):
         def __get_config(is_nac):
             dic = {}
-            base_config = {'code_string': 'vasp544mpi@'+computer,
+            base_config = {'code_string': params['phonon_vasp_code']+'@'+computer,
                            'potential_family': params['potcar']['potential_family'],
                            'potential_mapping': params['potcar']['potential_mapping'],
                            'options': {'resources': {'parallel_env': 'mpi*',
@@ -291,6 +291,7 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
             builder.settings = get_data_node('dict', dict=
                       {'add_energies': True,
                        'add_forces': True,
+
                        'add_stress': True}
                     )
 
