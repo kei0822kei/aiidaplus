@@ -210,6 +210,10 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
               }
             dic['phonon_conf']['symmetry_tolerance'] = 1e-5
 
+    def _phonon_vasp_code(dic):
+        if filetype == 'phonon':
+            dic['phonon_vasp_code'] = 'vasp544mpi'
+
     dic = {}
     _label_descrip(dic)
     structure_data = _get_structuredata_from_node(structure_pk)
@@ -224,4 +228,5 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
         _incar_params(dic, is_metal, get_encut_from_structure=True)
     _relax_conf(dic)
     _phonon_conf(dic)
+    _phonon_vasp_code(dic)
     return dic
