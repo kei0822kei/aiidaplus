@@ -12,7 +12,7 @@ def get_argparse():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-wf', '--workflow', type=str,
-        default='vasp', help="choose workflow, 'vasp'(default), 'relax' or 'phonon'")
+        default='vasp', help="choose workflow, 'vasp'(default), 'relax' or 'phonopy'")
     parser.add_argument('--code', type=str,
         default=None, help="input code ex. 'vasp544mpi', 'phononpy'")
     parser.add_argument('--computer', type=str,
@@ -26,7 +26,7 @@ def get_argparse():
         default=None, help="get setting file, you don't have to set another parser \n \
     input strings are \n \
                             'filetype' 'is_metal' 'filename' \n \
-                               filetype: choose from 'oneshot' 'relax' 'phonon'\n \
+                               filetype: choose from 'oneshot' 'relax' 'phonopy'\n \
                                is_metal: bool \n \
                                filename: output filename")
     parser.add_argument('--params_yaml', type=str,
@@ -130,7 +130,7 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
         print("pk {0} is added to group '{1}'".format(running_pk, group))
 
     def _unexpected_workflow():
-        if wf is not ['vasp', 'relax', 'phonon']:
+        if wf is not ['vasp', 'relax', 'phonopy']:
             raise ValueError("unexpected workflow: %s" % wf)
 
     def _load_yaml(filename):
@@ -142,8 +142,8 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
             workflow = WorkflowFactory('vasp.vasp')
         elif wf =='relax':
             workflow = WorkflowFactory('vasp.relax')
-        elif wf == 'phonon':
-            workflow = WorkflowFactory('phonopy.phonon')
+        elif wf == 'phonopy':
+            workflow = WorkflowFactory('phonopy.phonopy')
         else:
             _unexpected_workflow()
         return workflow
@@ -277,7 +277,7 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
 
             return dic
 
-        if wf == 'phonon':
+        if wf == 'phonopy':
             is_nac = params['phonon_conf']['phonon_settings']['is_nac']
             builder.phonon_settings = get_data_node(
                     'dict', dict=params['phonon_conf']['phonon_settings'])

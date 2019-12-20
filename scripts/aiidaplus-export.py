@@ -35,6 +35,7 @@ def _export_structure(pk, node, get_data, show):
     if show:
         aiidaplus_structure.get_description(structure)
     if get_data:
+        poscar = pmgvasp.Poscar(structure)
         poscar.write_file('pk'+str(pk)+'.poscar')
 
 def _export_relax(pk, node, get_data, show):
@@ -52,6 +53,10 @@ def _export_relax(pk, node, get_data, show):
         pks = [ each_node.pk for each_node in node.called[1:] ]  # to get rid of final step '[1:]'
         volume = [ each_node.called[0].called[0].outputs.structure.
                 get_pymatgen_structure().volume for each_node in node.called[1:] ]
+        space_group = [ list(each_node.called[0].called[0].outputs.structure.
+                get_pymatgen_structure().get_space_group_info()) for each_node in node.called[1:] ]
+        structure_pk = [ each_node.called[0].called[0].outputs.structure.pk
+                for each_node in node.called[1:] ]
         maximum_force = [ each_node.outputs.misc.get_dict()['maximum_force']
                 for each_node in node.called[1:] ]
         maximum_stress = [ each_node.outputs.misc.get_dict()['maximum_stress']
@@ -59,12 +64,14 @@ def _export_relax(pk, node, get_data, show):
         total_energy = [ each_node.outputs.misc.
                 get_dict()['total_energies']['energy_no_entropy']
                 for each_node in node.called[1:] ]
-        for lst in [pks, volume, maximum_force, maximum_stress, total_energy]:
+        for lst in [pks, volume, space_group, structure_pk, maximum_force, maximum_stress, total_energy]:
             lst.reverse()
         relax_times = [ i+1 for i in range(len(pks)) ]
         dic = {
                 'pks': pks,
                 'volume': volume,
+                'space_group': space_group,
+                'structure_pk': structure_pk,
                 'maximum_force': maximum_force,
                 'maximum_stress': maximum_stress,
                 'total_energy': total_energy,
@@ -107,6 +114,7 @@ def _export_relax(pk, node, get_data, show):
     processes = __get_process_log()
     results = __get_result()
     results['volume'] = processes['volume'][-1]
+    results['space_group'] = processes['space_group'][-1]
     processes['final_state'] = results
     processes['relax_pk'] = pk
     __get_process_fig(processes)

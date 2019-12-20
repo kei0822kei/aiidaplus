@@ -36,7 +36,7 @@ def get_argparse():
         help="if True, standardize structure")
     parser.add_argument('--primitive', action='store_true',
         help="if True, find primitive strucutre")
-    parser.add_argument('--description', action='store_true',
+    parser.add_argument('--show', action='store_true',
         help="get description about structure")
     args = parser.parse_args()
     return args
@@ -130,7 +130,8 @@ def import_to_aiida(pmgstruct, label, group=None):
     print("verdi data structure export %s \n" % str(structure.pk))
     if group is not None:
         grp = Group.get(label=group)
-        print("structure {0} has added to 'group {1}'".format(
+        grp.add_nodes(structure)
+        print("structure {0} has added to group '{1}'".format(
             structure.pk, group))
 
 def standardize_structure(pmgstruct, primitive=False):
@@ -155,7 +156,7 @@ def main(filename,
          group,
          standardize,
          primitive,
-         description,
+         show,
          label):
 
     if group is not None:
@@ -164,7 +165,7 @@ def main(filename,
     pmgstruct = get_pmgstructure(filename, filetype, primitive)
     if standardize:
         pmgstruct = standardize_structure(pmgstruct, primitive)
-    if description:
+    if show:
         get_description(pmgstruct)
     if get_cif:
         export_structure(pmgstruct, 'cif')
@@ -189,5 +190,5 @@ if __name__ == '__main__':
          group=args.group,
          standardize=args.standardize,
          primitive=args.primitive,
-         description=args.description,
+         show=args.show,
          label=args.label)

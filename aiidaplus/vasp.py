@@ -128,29 +128,31 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
         __incar_params_base(dic['incar'], is_metal)
 
     def _kpoints(dic, structure_data, kdensity):
-        if kdensity is not None:
-            kdata = KpointsData()
-            kdata.set_cell_from_structure(structure_data)
-            print("kdensity is: %s" % str(kdensity))
-            print("reciprocal lattice (included 2*pi) is:")
-            print(kdata.reciprocal_cell)
-            print("set kpoints mesh as:")
-            kdata.set_kpoints_mesh_from_density(
-                    kdensity, offset=[0.5,0.5,0.5])
-            kmesh = kdata.get_kpoints_mesh()
-            print(kmesh[0])
-            dic['kpoints'] = {
-                  'mesh': kmesh[0],
-                  'offset': kmesh[1]
-                }
-        else:
-            dic['kpoints'] = {
-                  'mesh' : [6,6,6],
-                  'offset' : [0.5,0.5,0.5]
-                }
         if filetype == 'phonon':
             dic['kpoints']['mesh_fc2'] = [2,2,2]
             dic['kpoints']['mesh_nac'] = [12,12,12]
+            dic['kpoints']['offset'] = [0.5,0.5,0.5]
+        else:
+            if kdensity is not None:
+                kdata = KpointsData()
+                kdata.set_cell_from_structure(structure_data)
+                print("kdensity is: %s" % str(kdensity))
+                print("reciprocal lattice (included 2*pi) is:")
+                print(kdata.reciprocal_cell)
+                print("set kpoints mesh as:")
+                kdata.set_kpoints_mesh_from_density(
+                        kdensity, offset=[0.5,0.5,0.5])
+                kmesh = kdata.get_kpoints_mesh()
+                print(kmesh[0])
+                dic['kpoints'] = {
+                      'mesh': kmesh[0],
+                      'offset': kmesh[1]
+                    }
+            else:
+                dic['kpoints'] = {
+                      'mesh' : [6,6,6],
+                      'offset' : [0.5,0.5,0.5]
+                    }
 
     def _options(dic):
         dic['options'] = {'max_wallclock_seconds':  36000}
@@ -202,7 +204,8 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
             dic['phonon_conf']['phonon_settings'] = {
                 'supercell_matrix': [2,2,2],
                 'distance': 0.03,
-                'mesh': 50.0,  # ?? what is this setting?
+                # 'mesh': 50.0,  # ?? what is this setting?
+                'mesh': [19,19,19],  # ?? what is this setting?
                 'is_nac': True
               }
             dic['phonon_conf']['symmetry_tolerance'] = 1e-5
