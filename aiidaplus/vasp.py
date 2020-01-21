@@ -9,7 +9,7 @@ definitions which help aiida-vasp calculation
 import os
 import numpy as np
 import yaml
-from yaml import CLoader as Loader
+# from yaml import CLoader as Loader
 from aiida.orm import load_node
 from aiida.orm.nodes.data import KpointsData
 
@@ -84,7 +84,8 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
                             os.path.dirname(os.path.dirname(__file__)),
                             'potcar',
                             'encut_'+dic['potcar']['potential_family']+'.yaml')
-                    encuts_db = yaml.load(open(encut_file), Loader=Loader)
+                    # encuts_db = yaml.load(open(encut_file), Loader=Loader)
+                    encuts_db = yaml.load(open(encut_file), Loader=yaml.SafeLoader)
                     max_encut = max([
                         encuts_db[dic['potcar']['potential_mapping'][key]] for key
                         in dic['potcar']['potential_mapping'] ])
@@ -129,6 +130,7 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
 
     def _kpoints(dic, structure_data, kdensity):
         if filetype == 'phonon':
+            dic['kpoints'] = {}
             dic['kpoints']['mesh_fc2'] = [2,2,2]
             dic['kpoints']['mesh_nac'] = [12,12,12]
             dic['kpoints']['offset'] = [0.5,0.5,0.5]
@@ -163,8 +165,10 @@ def default_params(filetype, is_metal, structure_pk=None, kdensity=None):
                     os.path.dirname(os.path.dirname(__file__)),
                     'potcar',
                     'default_potcar.yaml')
+            # default_potcars = yaml.load(
+            #         open(default_potcar_file), Loader=Loader)
             default_potcars = yaml.load(
-                    open(default_potcar_file), Loader=Loader)
+                    open(default_potcar_file), Loader=yaml.SafeLoader)
             mapping = {}
             for element in list(structure_data.get_symbols_set()):
                 mapping[element] = default_potcars[element]

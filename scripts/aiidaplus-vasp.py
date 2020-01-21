@@ -115,7 +115,7 @@ def export_setting(filetype, is_metal, filename, structure_pk, kdensity):
 
 @with_dbenv()
 def main(code, computer, queue, verbose, wf, params_yaml, group=None):
-    from yaml import CLoader as Loader
+    # from yaml import CLoader as Loader
     from aiida.plugins import WorkflowFactory
     from aiida.engine import run, submit
     from aiida.common.extendeddicts import AttributeDict
@@ -134,7 +134,8 @@ def main(code, computer, queue, verbose, wf, params_yaml, group=None):
             raise ValueError("unexpected workflow: %s" % wf)
 
     def _load_yaml(filename):
-        data = yaml.load(open(filename), Loader=Loader)
+        # data = yaml.load(open(filename), Loader=Loader)
+        data = yaml.load(open(filename), Loader=yaml.SafeLoader)
         return data
 
     def _get_workflow():
