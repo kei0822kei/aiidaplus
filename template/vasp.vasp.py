@@ -15,15 +15,12 @@ def get_argparse():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--computer', type=str,
-        default='stern', help="input computer ex. 'vega'")
+        default='stern', help="input computer (default:stern)'")
     parser.add_argument('--queue', type=str,
         default='', help="queue name, default None")
     parser.add_argument('--group', type=str,
         default=None, help="add nodes to specified group")
-    parser.add_argument('--dry_run', type=bool,
-        default=False, help="dry run, if True, submit => run")
-    parser.add_argument('--verbose', type=bool,
-        default=True, help="verbose")
+    parser.add_argument('--verbose', action='store_true', help="verbose")
     args = parser.parse_args()
     return args
 
@@ -48,7 +45,7 @@ description = "this is description"
 #----------
 # structure
 #----------
-structure_pk = 4649
+structure_pk = 3932
 elements = get_elements(structure_pk)
 
 #-------
@@ -132,8 +129,7 @@ def check_group_existing(group):
 def main(computer,
          queue='',
          group=None,
-         dry_run=False,
-         verbose=True):
+         verbose=False):
 
     # group check
     if group is not None:
@@ -190,14 +186,10 @@ def main(computer,
     builder.potential_family = Str(potential_family)
     builder.potential_mapping = Dict(dict=potential_mapping)
 
-    # run or submit
-    if dry_run:
-        run(workflow, **builder)
-        return
-    else:
-        future = submit(workflow, **builder)
-        print(future)
-        print('Running workchain with pk={}'.format(future.pk))
+    # submit
+    future = submit(workflow, **builder)
+    print(future)
+    print('Running workchain with pk={}'.format(future.pk))
 
     # add group
     grp = Group.get(label=group)
@@ -209,5 +201,4 @@ if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
          group=args.group,
-         dry_run=args.dry_run,
          verbose=args.verbose)
