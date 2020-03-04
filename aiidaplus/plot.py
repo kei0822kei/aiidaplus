@@ -9,7 +9,7 @@ provide various kinds of plot
 
 from matplotlib import pyplot as plt
 
-def line_chart(ax, xdata, ydata, xlabel, ylabel):
+def line_chart(ax, xdata, ydata, xlabel, ylabel, label=None):
     """
     plot line chart in ax
 
@@ -34,7 +34,7 @@ def line_chart(ax, xdata, ydata, xlabel, ylabel):
         Notes
         -----
     """
-    ax.plot(xdata, ydata, linestyle='--', linewidth='0.5', c='red')
+    ax.plot(xdata, ydata, linestyle='--', linewidth='0.5', c='red', label=label)
     ax.scatter(xdata, ydata, facecolor='white', marker='o', edgecolor='red')
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)

@@ -9,6 +9,37 @@ import numpy as np
 import yaml
 # from yaml import CLoader as Loader
 from aiida.orm import StructureData
+from pymatgen.core.structure import Structure
+
+def get_grids_from_density(structure:Structure,
+                           grid_density:float,
+                           direct_or_reciprocal:str):
+    """
+    get grid from structure
+
+    Args:
+        structure (pymatgen.core.structure.Structure): structure
+        grid_density (float): grid density
+        direct_or_reciprocal (str): choose 'direct' or 'reciprocal'
+
+    Returns:
+        np.array: grids
+
+    Raises:
+        ValueError: either 'direct' or 'reciprocal' did not specified
+
+    Note:
+        reciprocal lattice is included 2 pi
+    """
+    if direct_or_reciprocal == 'direct':
+        lattice_norms = np.array(
+                structure.lattice.abc)
+    elif direct_or_reciprocal == 'reciprocal':
+        lattice_norms = np.array(
+                structure.lattice.reciprocal_lattice.abc)
+    grids = np.int64(
+        np.round(np.array(lattice_norms / grid_density)))
+    return grids
 
 def get_elements_from_aiidastructure(aiidastructure:StructureData):
     """
