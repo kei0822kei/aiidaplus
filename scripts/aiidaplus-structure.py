@@ -8,7 +8,6 @@ This script deals with structure
 
 import argparse
 from aiida.cmdline.utils.decorators import with_dbenv
-aiidaplus_vasp = __import__("aiidaplus-vasp")
 
 # argparse
 def get_argparse():
@@ -158,9 +157,6 @@ def main(filename,
          primitive,
          show,
          label):
-
-    if group is not None:
-        aiidaplus_vasp.check_group_existing(group)
 
     pmgstruct = get_pmgstructure(filename, filetype, primitive)
     if standardize:

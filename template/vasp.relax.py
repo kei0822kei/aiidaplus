@@ -8,7 +8,8 @@ from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import run, submit
 from aiida.orm import (load_node, Bool, Code, Dict, Float,
                        Group, Int, Str, KpointsData)
-from aiidaplus.utils import (get_default_potcar_mapping,
+from aiidaplus.utils import (get_kpoints,
+                             get_default_potcar_mapping,
                              get_elements_from_aiidastructure,
                              get_encut)
 
@@ -46,7 +47,7 @@ description = "this is description"
 #----------
 # structure
 #----------
-structure_pk = 3932
+structure_pk = 3938
 elements = get_elements(structure_pk)
 
 #-------
@@ -125,15 +126,25 @@ relax_settings = {
 #--------
 # kpoints
 #--------
+# kpoints = {
+#     'mesh': [6, 6, 6],
+#     'kdensity': None,
+#     'offset': [0.5, 0.5, 0.5]
+#     # 'offset': [0.5, 0.5, 0.5]
+#     }
 ### not use kdensity
 # kpoints = {
 #     'mesh': [6, 6, 6],
-#     'offset': [0.5, 0.5, 0.5]
+#     'kdensity': None,
+#     'offset': None
+#     # 'offset': [0.5, 0.5, 0.5]
 #     }
 ### use kdensity
 kpoints = {
+    'mesh': None,
     'kdensity': 0.2,
-    'offset': [0.5, 0.5, 0.5]
+    'offset': None
+    # 'offset': [0.5, 0.5, 0.5]
     }
 
 
@@ -232,21 +243,11 @@ def main(computer,
 
     # kpoints
     kpt = KpointsData()
-    if 'kdensity' in kpoints.keys():
-        kpt.set_cell_from_structure(builder.structure)
-        kpt.set_kpoints_mesh_from_density(
-                kpoints['kdensity'], offset=kpoints['offset'])
-        if verbose:
-            kmesh = kpt.get_kpoints_mesh()
-            print("kdensity is: %s" % str(kpoints['kdensity']))
-            print("reciprocal lattice (included 2*pi) is:")
-            print(kpt.reciprocal_cell)
-            print("set kpoints mesh as:")
-            print(kmesh[0])
-            print("set offset as:")
-            print(kmesh[1])
-    else:
-        kpt.set_kpoints_mesh(kpoints['mesh'], offset=kpoints['offset'])
+    mesh, offset = get_kpoints(structure=builder.structure.get_pymatgen(),
+                               mesh=kpoints['mesh'],
+                               kdensity=kpoints['kdensity'],
+                               offset=kpoints['offset'])
+    kpt.set_kpoints_mesh(mesh, offset=offset)
     builder.kpoints = kpt
 
     # potcar
@@ -259,10 +260,11 @@ def main(computer,
     print('Running workchain with pk={}'.format(future.pk))
 
     # add group
-    grp = Group.get(label=group)
-    running_node = load_node(future.pk)
-    grp.add_nodes(running_node)
-    print("pk {} is added to group: {}".format(future.pk, group))
+    if group is not None:
+        grp = Group.get(label=group)
+        running_node = load_node(future.pk)
+        grp.add_nodes(running_node)
+        print("pk {} is added to group: {}".format(future.pk, group))
 
 if __name__ == '__main__':
     main(computer=args.computer,
