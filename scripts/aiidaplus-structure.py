@@ -107,6 +107,8 @@ def get_description(pmgstruct):
     print("STRUCTURE DETAILS")
     print("-----------------")
     print('Object Type: StructureData')
+    print('Volume')
+    print(pmgstruct.lattice.volume)
     print('Lattice')
     print(pmgstruct.lattice)
     print('Site Symbols')

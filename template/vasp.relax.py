@@ -22,7 +22,6 @@ def get_argparse():
         default='', help="queue name, default None")
     parser.add_argument('--group', type=str,
         default=None, help="add nodes to specified group")
-    parser.add_argument('--verbose', action='store_true', help="verbose")
     args = parser.parse_args()
     return args
 
@@ -39,7 +38,6 @@ def get_elements(pk):
 # common settings
 #----------------
 wf = 'vasp.relax'
-tot_num_mpiprocs = 16
 max_wallclock_seconds = 36000
 label = "this is label"
 description = "this is description"
@@ -106,16 +104,16 @@ relax_conf = {
     'positions': True,
     'volume': True,
     'shape': True,
+    'algo': 'rd',  # you can also choose 'cg' (default)
     'steps': 20,
     'convergence_absolute': False,
-    'convergence_max_iterations': 3,
+    'convergence_max_iterations': 2,
     'convergence_on': True,
     'convergence_positions': 0.01,
     'convergence_shape_angles': 0.1,
     'convergence_shape_lengths': 0.1,
     'convergence_volume': 0.01,
-    'force_cutoff': 0.0001,
-    # 'energy_cutoff': 1e-6,
+    'force_cutoff': 0.001,  # or 'energy_cutoff': 1e-4,
     }
 relax_settings = {
     'add_energies': True,
@@ -158,8 +156,7 @@ def check_group_existing(group):
 @with_dbenv()
 def main(computer,
          queue='',
-         group=None,
-         verbose=False):
+         group=None):
 
     # group check
     if group is not None:
@@ -170,7 +167,7 @@ def main(computer,
     builder = workflow.get_builder()
     builder.code = Code.get_from_string('{}@{}'.format('vasp544mpi', computer))
     builder.clean_workdir = Bool(False)
-    builder.verbose = Bool(verbose)
+    builder.verbose = Bool(True)
 
     # label and descriptions
     builder.metadata.label = label
@@ -181,8 +178,11 @@ def main(computer,
     options = AttributeDict()
     options.account = ''
     options.qos = ''
-    options.resources = {'tot_num_mpiprocs': tot_num_mpiprocs,
-                         'parallel_env': 'mpi*'}
+    options.resources =  {
+            'tot_num_mpiprocs': 16,
+            'num_machines': 1,
+            'parallel_env': 'mpi*'
+            }
     options.queue_name = queue
     options.max_wallclock_seconds = max_wallclock_seconds
     builder.options = Dict(dict=options)
@@ -208,6 +208,9 @@ def main(computer,
     if 'shape' in keys:
         relax_attribute.shape = \
                 Bool(relax_conf['shape'])
+    if 'shape' in keys:
+        relax_attribute.algo = \
+                Str(relax_conf['algo'])
     if 'steps' in keys:
         relax_attribute.steps = \
                 Int(relax_conf['steps'])
@@ -269,5 +272,4 @@ def main(computer,
 if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
-         group=args.group,
-         verbose=args.verbose)
+         group=args.group)

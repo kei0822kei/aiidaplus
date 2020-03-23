@@ -8,7 +8,8 @@ from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import run, submit
 from aiida.orm import (load_node, Bool, Code, Dict, Float,
                        Group, Int, Str, KpointsData)
-from aiidaplus.utils import (get_default_potcar_mapping,
+from aiidaplus.utils import (get_kpoints,
+                             get_default_potcar_mapping,
                              get_elements_from_aiidastructure,
                              get_encut)
 
@@ -21,7 +22,6 @@ def get_argparse():
         default='', help="queue name, default None")
     parser.add_argument('--group', type=str,
         default=None, help="add nodes to specified group")
-    parser.add_argument('--verbose', action='store_true', help="verbose")
     args = parser.parse_args()
     return args
 
@@ -100,16 +100,27 @@ incar_settings.update(smearing_settings)
 #--------
 # kpoints
 #--------
+# kpoints = {
+#     'mesh': [6, 6, 6],
+#     'kdensity': None,
+#     'offset': [0.5, 0.5, 0.5]
+#     # 'offset': [0.5, 0.5, 0.5]
+#     }
 ### not use kdensity
 # kpoints = {
 #     'mesh': [6, 6, 6],
-#     'offset': [0.5, 0.5, 0.5]
+#     'kdensity': None,
+#     'offset': None
+#     # 'offset': [0.5, 0.5, 0.5]
 #     }
 ### use kdensity
 kpoints = {
+    'mesh': None,
     'kdensity': 0.2,
-    'offset': [0.5, 0.5, 0.5]
+    'offset': None
+    # 'offset': [0.5, 0.5, 0.5]
     }
+
 
 #--------
 # phonopy
@@ -134,29 +145,7 @@ def check_group_existing(group):
 @with_dbenv()
 def main(computer,
          queue='',
-         group=None,
-         verbose=False):
-
-    # kpoints
-    # def get_kpoints_from_density(kdensity, supercell_matrix):
-    #     kpt = KpointsData()
-    #     kpt.set_cell_from_structure(builder.structure)
-    #     kpt.set_kpoints_mesh_from_density(
-    #             kpoints['kdensity'], offset=kpoints['offset'])
-    #     if verbose:
-    #         kmesh = kpt.get_kpoints_mesh()
-    #         print("kdensity is: %s" % str(kpoints['kdensity']))
-    #         print("reciprocal lattice (included 2*pi) is:")
-    #         print(kpt.reciprocal_cell)
-    #         print("set kpoints mesh as:")
-    #         print(kmesh[0])
-    #         print("set offset as:")
-    #         print(kmesh[1])
-    #         print("su")
-    #         print("supercell_matrix: %s" % str(supercell_matrix))
-    #         print("kmesh / supercell_matrix")
-    #         kpoints = np.array(kmesh) / np.array(supercell_matrix)
-    #         return kpoints
+         group=None):
 
     def get_phonon_settings():
         phonon_settings = {}
@@ -168,10 +157,16 @@ def main(computer,
         return phonon_settings
 
     def get_vasp_settings():
+        pmgstructure = load_node(structure_pk).get_pymatgen()
+        pmgstructure.make_supercell(supercell_matrix)
+        mesh, offset = get_kpoints(structure=pmgstructure,
+                                   mesh=kpoints['mesh'],
+                                   kdensity=kpoints['kdensity'],
+                                   offset=kpoints['offset'])
         dic = {}
         base_config = {'code_string': vasp_code+'@'+computer,
-                       'kpoints_density': kpoints['kdensity'],
-                       'offset': kpoints['offset'], # work ?
+                       'kpoints_mesh': mesh,
+                       'kpoints_offset': offset,
                        'potential_family': potential_family,
                        'potential_mapping': potential_mapping,
                        'options': {'resources': {'parallel_env': 'mpi*',
@@ -208,8 +203,6 @@ def main(computer,
     workflow = WorkflowFactory(wf)
     builder = workflow.get_builder()
     builder.code_string = Str('{}@{}'.format(code, computer))
-    # builder.clean_workdir = Bool(False)
-    # builder.verbose = Bool(verbose)
 
     # label and descriptions
     builder.metadata.label = label
@@ -240,13 +233,13 @@ def main(computer,
     print('Running workchain with pk={}'.format(future.pk))
 
     # add group
-    grp = Group.get(label=group)
-    running_node = load_node(future.pk)
-    grp.add_nodes(running_node)
-    print("pk {} is added to group: {}".format(future.pk, group))
+    if group is not None:
+        grp = Group.get(label=group)
+        running_node = load_node(future.pk)
+        grp.add_nodes(running_node)
+        print("pk {} is added to group: {}".format(future.pk, group))
 
 if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
-         group=args.group,
-         verbose=args.verbose)
+         group=args.group)

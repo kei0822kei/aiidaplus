@@ -22,7 +22,6 @@ def get_argparse():
         default='', help="queue name, default None")
     parser.add_argument('--group', type=str,
         default=None, help="add nodes to specified group")
-    parser.add_argument('--verbose', action='store_true', help="verbose")
     args = parser.parse_args()
     return args
 
@@ -34,12 +33,10 @@ def get_elements(pk):
     elements = get_elements_from_aiidastructure(node)
     return elements
 
-
 #----------------
 # common settings
 #----------------
 wf = 'twinpy.shear'
-tot_num_mpiprocs = 16
 max_wallclock_seconds = 36000
 label = "this is label"
 description = "this is description"
@@ -110,6 +107,7 @@ incar_settings.update(smearing_settings)
 # relax_settings
 #---------------
 relax_conf = {
+    'algo': 'rd',  # you can also choose 'cg' (default)
     'steps': 20,
     'convergence_absolute': False,
     'convergence_max_iterations': 3,
@@ -153,8 +151,7 @@ def check_group_existing(group):
 @with_dbenv()
 def main(computer,
          queue='',
-         group=None,
-         verbose=False):
+         group=None):
 
     # group check
     if group is not None:
@@ -216,5 +213,4 @@ def main(computer,
 if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
-         group=args.group,
-         verbose=args.verbose)
+         group=args.group)
