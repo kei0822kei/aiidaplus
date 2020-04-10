@@ -8,6 +8,7 @@ This script helps you export various data from aiida database.
 
 import argparse
 import yaml
+import numpy as np
 from matplotlib import pyplot as plt
 from aiida.orm import load_node
 from aiida.cmdline.utils.decorators import with_dbenv
@@ -29,6 +30,42 @@ def get_argparse():
     return args
 
 # functions
+def _export_shear(pk, node, get_data, show):
+
+    def __get_results():
+        parent = node.outputs.parent.get_pymatgen()
+        dic = {}
+        dic['atoms_num'] = len(parent.species)
+        dic['energies'] = np.array(node.outputs.relax_results.get_dict()['energies'])
+        dic['strain'] = node.outputs.strain.value \
+                * np.array(node.outputs.shear_ratios['shear_ratios'])
+        return dic
+
+    def __get_process_fig(dic):
+        fig = plt.figure()
+        # ax1 = fig.add_axes((0.15, 0.1, 0.35,  0.35))
+        # ax2 = fig.add_axes((0.63, 0.1, 0.35, 0.35))
+        # ax3 = fig.add_axes((0.15, 0.55, 0.35, 0.35))
+        # ax4 = fig.add_axes((0.63, 0.55, 0.35, 0.35))
+        ax1 = fig.add_subplot(111)
+        aiidaplot.line_chart(
+                ax1,
+                dic['strain'],
+                (dic['energies'] - dic['energies'][0]) * 1000 / dic['atoms_num'],
+                "strain (angstrom)",
+                "energy (meV / atom)"
+                )
+        fig.suptitle('shear result pk: %s' % pk)
+
+    results = __get_results()
+    __get_process_fig(results)
+    if get_data:
+        with open('shearworkchain_pk'+str(pk)+'.yaml', 'w') as f:
+            yaml.dump(results, f, indent=4, default_flow_style=False)
+    if show:
+        plt.savefig('shearworkchain_pk'+str(pk)+'.png')
+        plt.show()
+
 def _export_structure(pk, node, get_data, show):
     aiidaplus_structure = __import__("aiidaplus-structure")
     structure = node.get_pymatgen_structure()
@@ -40,7 +77,7 @@ def _export_structure(pk, node, get_data, show):
 
 def _export_relax(pk, node, get_data, show):
 
-    def __get_result():
+    def __get_results():
         dic = {
           'relax_structure_pk': node.outputs.relax__structure.pk,
           'maximum_force': node.outputs.misc['maximum_force'],
@@ -112,7 +149,7 @@ def _export_relax(pk, node, get_data, show):
         fig.suptitle('relux result pk: %s' % pk)
 
     processes = __get_process_log()
-    results = __get_result()
+    results = __get_results()
     results['volume'] = processes['volume'][-1]
     results['space_group'] = processes['space_group'][-1]
     processes['final_state'] = results
@@ -159,6 +196,8 @@ def main(pk, get_data=False, show=False):
         workchain_name = node.process_class.get_name()
         if workchain_name == 'RelaxWorkChain':
             _export_relax(pk, node, get_data, show)
+        elif workchain_name == 'ShearWorkChain':
+            _export_shear(pk, node, get_data, show)
         else:
             raise ValueError("workchain %s is not supported" % workchain_name)
     else:

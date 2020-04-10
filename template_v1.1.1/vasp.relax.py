@@ -45,7 +45,8 @@ description = "this is description"
 #----------
 # structure
 #----------
-structure_pk = 3938
+# structure_pk = 30347  # AgBr
+structure_pk = 4545  # for glass, Ne
 elements = get_elements(structure_pk)
 
 #-------
@@ -84,15 +85,15 @@ incar_settings['encut'] = encut
 
 ### metal or not metal
 ##### metal
-smearing_settings = {
-    'ismear': 1,
-    'sigma': 0.2
-    }
-##### not metal
 # smearing_settings = {
-#     'ismear': 0,
-#     'sigma': 0.01
+#     'ismear': 1,
+#     'sigma': 0.2
 #     }
+##### not metal
+smearing_settings = {
+    'ismear': 0,
+    'sigma': 0.01
+    }
 
 incar_settings.update(smearing_settings)
 
@@ -104,7 +105,7 @@ relax_conf = {
     'positions': True,
     'volume': True,
     'shape': True,
-    'algo': 'rd',  # you can also choose 'cg' (default)
+    # 'algo': 'rd',  # you can also choose 'cg' (default)
     'steps': 20,
     'convergence_absolute': False,
     'convergence_max_iterations': 2,
@@ -124,12 +125,13 @@ relax_settings = {
 #--------
 # kpoints
 #--------
-# kpoints = {
-#     'mesh': [6, 6, 6],
-#     'kdensity': None,
-#     'offset': [0.5, 0.5, 0.5]
-#     # 'offset': [0.5, 0.5, 0.5]
-#     }
+kpoints = {
+    'mesh': [6, 6, 6],
+    'kdensity': None,
+    # 'offset': None
+    'offset': [0.5, 0.5, 0.5]
+    }
+
 ### not use kdensity
 # kpoints = {
 #     'mesh': [6, 6, 6],
@@ -137,13 +139,14 @@ relax_settings = {
 #     'offset': None
 #     # 'offset': [0.5, 0.5, 0.5]
 #     }
+
 ### use kdensity
-kpoints = {
-    'mesh': None,
-    'kdensity': 0.2,
-    'offset': None
-    # 'offset': [0.5, 0.5, 0.5]
-    }
+# kpoints = {
+#     'mesh': None,
+#     'kdensity': 0.2,
+#     'offset': None
+#     # 'offset': [0.5, 0.5, 0.5]
+#     }
 
 
 def check_group_existing(group):
@@ -208,7 +211,7 @@ def main(computer,
     if 'shape' in keys:
         relax_attribute.shape = \
                 Bool(relax_conf['shape'])
-    if 'shape' in keys:
+    if 'algo' in keys:
         relax_attribute.algo = \
                 Str(relax_conf['algo'])
     if 'steps' in keys:
@@ -246,11 +249,11 @@ def main(computer,
 
     # kpoints
     kpt = KpointsData()
-    mesh, offset = get_kpoints(structure=builder.structure.get_pymatgen(),
+    kpoints_vasp = get_kpoints(structure=builder.structure.get_pymatgen(),
                                mesh=kpoints['mesh'],
                                kdensity=kpoints['kdensity'],
                                offset=kpoints['offset'])
-    kpt.set_kpoints_mesh(mesh, offset=offset)
+    kpt.set_kpoints_mesh(kpoints_vasp['mesh'], offset=kpoints_vasp['offset'])
     builder.kpoints = kpt
 
     # potcar

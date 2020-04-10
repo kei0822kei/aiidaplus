@@ -8,6 +8,7 @@ This script deals with structure
 
 import argparse
 from aiida.cmdline.utils.decorators import with_dbenv
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 # argparse
 def get_argparse():
@@ -103,6 +104,8 @@ def export_structure(pmgstruct, filetype):
 def get_description(pmgstruct):
     from pymatgen.io import vasp as pmgvasp
     poscar = pmgvasp.Poscar(pmgstruct)
+    analyzer = SpacegroupAnalyzer(pmgstruct)
+    dataset = analyzer.get_symmetry_dataset()
     print("-----------------")
     print("STRUCTURE DETAILS")
     print("-----------------")
@@ -111,12 +114,18 @@ def get_description(pmgstruct):
     print(pmgstruct.lattice.volume)
     print('Lattice')
     print(pmgstruct.lattice)
-    print('Site Symbols')
-    print(poscar.site_symbols)
-    print('Number of Atoms')
-    print(poscar.natoms)
     print('Space Group')
     print(pmgstruct.get_space_group_info())
+    print('Point Group')
+    print(dataset['pointgroup'])
+    print('Number of Atoms')
+    print(poscar.natoms)
+    print('Wyckoffs')
+    print(dataset['wyckoffs'])
+    print('site symmetry')
+    print(dataset['site_symmetry_symbols'])
+    print('hall')
+    print("{}, ({})".format(dataset['hall'], dataset['hall_number']))
 
 def import_to_aiida(pmgstruct, label, group=None):
     from aiida.orm.nodes.data import StructureData
@@ -136,7 +145,6 @@ def import_to_aiida(pmgstruct, label, group=None):
             structure.pk, group))
 
 def standardize_structure(pmgstruct, primitive=False):
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     struct_analyzer = SpacegroupAnalyzer(pmgstruct)
     if primitive:
         print("primitive standardizing structure\n")

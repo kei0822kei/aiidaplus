@@ -8,7 +8,6 @@ import os
 import numpy as np
 import yaml
 from decimal import Decimal, ROUND_HALF_UP
-# from yaml import CLoader as Loader
 from aiida.orm import StructureData
 from pymatgen.core.structure import Structure
 
@@ -45,7 +44,7 @@ def get_grids_from_density(structure:Structure,
         fix the result list to [ even_num, odd_num, original_num ]
 
     Returns:
-        np.array: grids
+        dict: grids and density
 
     Raises:
         ValueError: either 'direct' or 'reciprocal' did not specified
@@ -70,22 +69,22 @@ def get_grids_from_density(structure:Structure,
         return fixed_num
 
     if direct_or_reciprocal == 'direct':
-        lattice_norms = np.array(
-                structure.lattice.abc)
+        abc = structure.lattice.abc
     elif direct_or_reciprocal == 'reciprocal':
-        lattice_norms = np.array(
-                structure.lattice.reciprocal_lattice.abc)
+        abc = structure.lattice.reciprocal_lattice.abc
     else:
         raise ValueError("'direct_or_reciprocal' must be specified as \n \
                           'dicrect' or 'reciprocal'")
-    grids_float = np.array(lattice_norms / grid_density)
+    lattice_norms = np.array(abc)
+    grids_float = lattice_norms / grid_density
     if odd_or_even is None:
         grids = np.int64(np.round(grids_float))
     else:
         assert len(odd_or_even) == 3
         grids = np.int64([ __fix_num_to_odd_or_even(num, numtype)
                                for num, numtype in zip(grids_float, odd_or_even) ])
-    return grids
+    densites = lattice_norms / grids
+    return {'grids': grids, 'densities': densites}
 
 def get_elements_from_aiidastructure(aiidastructure:StructureData):
     """
@@ -147,12 +146,12 @@ def get_encut(potential_family:str,
     enmax = max([ encuts[key] for key in list(potential_mapping.values()) ])
     return enmax * multiply
 
-def get_kpoints(structure:Structure=None,
+def get_kpoints(structure:Structure,
                 mesh:list=None,
                 kdensity:float=None,
                 offset:list=None):
     """
-    get preferable kpoints mesh
+    get preferable kpoints mesh and kdnesity
 
     Args:
         structure (pymatgen.core.structure.Structure): structure
@@ -162,8 +161,7 @@ def get_kpoints(structure:Structure=None,
         offset (list): shift from (0,0,0)
 
     Returns:
-        list: mesh
-        list: offset
+        dict: mesh, offset and densities of kpoints of each axis
 
     Raises:
         ValueError: both mesh and kdensity are None
@@ -178,8 +176,13 @@ def get_kpoints(structure:Structure=None,
     Note:
         description
     """
-    if structure is not None:
-        is_hexagonal = structure.lattice.is_hexagonal()
+    is_hexagonal = structure.lattice.is_hexagonal()
+
+    if offset is None:
+        if structure.lattice.is_hexagonal():
+            offset = [0, 0, 0.5]
+        else:
+            offset = [0.5, 0.5, 0.5]
 
     if mesh is None and kdensity is None:
         raise ValueError("mesh or kdensity must be specified")
@@ -192,15 +195,16 @@ def get_kpoints(structure:Structure=None,
             odd_or_even = ('odd', 'odd', 'even')
         else:
             odd_or_even = ('even', 'even', 'even')
-        mesh = get_grids_from_density(structure=structure,
-                                      grid_density=kdensity,
-                                      direct_or_reciprocal='reciprocal',
-                                      odd_or_even=odd_or_even)
-
-    if offset is None:
-        if structure.lattice.is_hexagonal():
-            offset = [0, 0, 0.5]
-        else:
-            offset = [0.5, 0.5, 0.5]
-
-    return mesh, offset
+        kgrids = get_grids_from_density(
+                    structure=structure,
+                    grid_density=kdensity,
+                    direct_or_reciprocal='reciprocal',
+                    odd_or_even=odd_or_even)
+        kgrids['mesh'] = kgrids['grids']
+        del kgrids['grids']
+    else:
+        lattice_norms = np.array(structure.lattice.reciprocal_lattice.abc)
+        densities = lattice_norms / mesh
+        kgrids = {'mesh': mesh, 'densities': densities}
+    kgrids['offset'] = offset
+    return kgrids

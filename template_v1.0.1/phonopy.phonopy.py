@@ -2,6 +2,7 @@
 
 import yaml
 import argparse
+import numpy as np
 from aiida.plugins import WorkflowFactory
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.extendeddicts import AttributeDict
@@ -46,7 +47,10 @@ description = "this is description"
 #----------
 # structure
 #----------
-structure_pk = 4775
+# structure_pk = 4775  # Ti
+# structure_pk = 30401  # AgBr (relaxed)
+# structure_pk = 4545  # Ne, for glass database
+structure_pk = 11850  # Ti, glass database
 elements = get_elements(structure_pk)
 
 #-------
@@ -85,27 +89,28 @@ incar_settings['encut'] = encut
 
 ### metal or not metal
 ##### metal
-smearing_settings = {
-    'ismear': 1,
-    'sigma': 0.2
-    }
-##### not metal
 # smearing_settings = {
-#     'ismear': 0,
-#     'sigma': 0.01
+#     'ismear': 1,
+#     'sigma': 0.2
 #     }
+##### not metal
+smearing_settings = {
+    'ismear': 0,
+    'sigma': 0.01
+    }
 
 incar_settings.update(smearing_settings)
 
 #--------
 # kpoints
 #--------
-# kpoints = {
-#     'mesh': [6, 6, 6],
-#     'kdensity': None,
-#     'offset': [0.5, 0.5, 0.5]
-#     # 'offset': [0.5, 0.5, 0.5]
-#     }
+kpoints = {
+    'mesh': [3, 3, 3],
+    'kdensity': None,
+    'offset': [0.5, 0.5, 0.5]
+    # 'offset': None
+    }
+
 ### not use kdensity
 # kpoints = {
 #     'mesh': [6, 6, 6],
@@ -113,14 +118,14 @@ incar_settings.update(smearing_settings)
 #     'offset': None
 #     # 'offset': [0.5, 0.5, 0.5]
 #     }
-### use kdensity
-kpoints = {
-    'mesh': None,
-    'kdensity': 0.2,
-    'offset': None
-    # 'offset': [0.5, 0.5, 0.5]
-    }
 
+### use kdensity
+# kpoints = {
+#     'mesh': None,
+#     'kdensity': 0.2,
+#     'offset': None
+#     # 'offset': [0.5, 0.5, 0.5]
+#     }
 
 #--------
 # phonopy
@@ -128,10 +133,10 @@ kpoints = {
 vasp_code = 'vasp544mpi'
 distance = 0.03
 is_nac = False
-phonopy_mesh = [11,11,11]
+# is_nac = True
+phonopy_mesh = [13,13,13]
 supercell_matrix = [2,2,2]
 symmetry_tolerance = 1e-5
-vasp_max_wallclock_seconds = 3600 * 10
 run_phonopy = True
 
 
@@ -159,40 +164,49 @@ def main(computer,
     def get_vasp_settings():
         pmgstructure = load_node(structure_pk).get_pymatgen()
         pmgstructure.make_supercell(supercell_matrix)
-        mesh, offset = get_kpoints(structure=pmgstructure,
-                                   mesh=kpoints['mesh'],
-                                   kdensity=kpoints['kdensity'],
-                                   offset=kpoints['offset'])
+        kpoints_fc2 = get_kpoints(
+                structure=pmgstructure,
+                mesh=kpoints['mesh'],
+                kdensity=kpoints['kdensity'],
+                offset=kpoints['offset'])
         dic = {}
         base_config = {'code_string': vasp_code+'@'+computer,
-                       'kpoints_mesh': mesh,
-                       'kpoints_offset': offset,
+                       'kpoints_mesh': kpoints_fc2['mesh'],
+                       'kpoints_offset': kpoints_fc2['offset'],
                        'potential_family': potential_family,
                        'potential_mapping': potential_mapping,
                        'options': {'resources': {'parallel_env': 'mpi*',
-                                                 'tot_num_mpiprocs': tot_num_mpiprocs},
-                                   'max_wallclock_seconds': vasp_max_wallclock_seconds}}
+                                                 'tot_num_mpiprocs': 16,
+                                                 'num_machines': 1},
+                                   'max_wallclock_seconds': 3600 * 10}}
         base_parser_settings = {'add_energies': True,
                                 'add_forces': True,
                                 'add_stress': True}
         forces_config = base_config.copy()
-        # forces_config.update({'kpoints_mesh': get_kpoints_from_density(kdensity, supercell_matrix),
-        #                       'parser_settings': base_parser_settings,
-        #                       'parameters': incar_settings})
         forces_config.update({'parser_settings': base_parser_settings,
                               'parameters': incar_settings})
         dic['forces'] = forces_config
-        # if is_nac:
-        #     nac_config = base_config.copy()
-        #     nac_parser_settings = {'add_born_charges': True,
-        #                            'add_dielectrics': True}
-        #     nac_parser_settings.update(base_parser_settings)
-        #     nac_incar_dict = {'lepsilon': True}
-        #     nac_incar_dict.update(params['incar']['incar_base'])
-        #     nac_config.update({'kpoints_mesh': params['kpoints']['mesh_nac'],
-        #                        'parser_settings': nac_parser_settings,
-        #                        'parameters': nac_incar_dict})
-        #     dic['nac'] = nac_config
+        if is_nac:
+            nac_config = base_config.copy()
+            nac_parser_settings = {'add_born_charges': True,
+                                   'add_dielectrics': True}
+            nac_parser_settings.update(base_parser_settings)
+            nac_incar_dict = {'lepsilon': True}
+            nac_incar_dict.update(incar_settings)
+            del nac_incar_dict['npar']
+            density = np.average(kpoints_fc2['densities'])
+            print("for nac calc, always primitive structure is used")
+            print("kpoints density for calc fc2 was: %f" % density)
+            print("for calc nac, multiply kpoints density is used")
+            print("from {} to {}".format(density, density*2))
+            kpoints_nac = get_kpoints(
+                    structure=pmgstructure.get_primitive_structure(),
+                    kdensity=density*2,
+                    offset=kpoints['offset'])
+            nac_config.update({'kpoints_mesh': kpoints_nac['mesh'],
+                               'parser_settings': nac_parser_settings,
+                               'parameters': nac_incar_dict})
+            dic['nac'] = nac_config
         return dic
 
     # group check
@@ -212,8 +226,9 @@ def main(computer,
     options = AttributeDict()
     options.account = ''
     options.qos = ''
-    options.resources = {'tot_num_mpiprocs': tot_num_mpiprocs,
-                         'parallel_env': 'mpi*'}
+    options.resources = {'parallel_env': 'mpi*',
+                         'tot_num_mpiprocs': 16,
+                         'num_machines': 1}
     options.queue_name = queue
     options.max_wallclock_seconds = max_wallclock_seconds
     builder.options = Dict(dict=options)
