@@ -10,11 +10,14 @@ import argparse
 import yaml
 import numpy as np
 from matplotlib import pyplot as plt
-from aiida.orm import load_node
+from aiida.orm import load_node, QueryBuilder, Node
 from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.plugins import WorkflowFactory
 from pymatgen.io import vasp as pmgvasp
 from aiidaplus import plot as aiidaplot
 from pprint import pprint
+
+RELAX_WF = WorkflowFactory('vasp.relax')
 
 # argparse
 def get_argparse():
@@ -39,6 +42,22 @@ def _export_shear(pk, node, get_data, show):
         dic['energies'] = np.array(node.outputs.relax_results.get_dict()['energies'])
         dic['strain'] = node.outputs.strain.value \
                 * np.array(node.outputs.shear_ratios['shear_ratios'])
+
+        # get relaxed structure pk
+        qb = QueryBuilder()
+        qb.append(Node, filters={'id':{'==': pk}}, tag='wf')
+        qb.append(RELAX_WF, with_incoming='wf', project=['label', 'id'])
+        relaxes = qb.all()
+        relaxes.sort(key=lambda x: x[0])
+        dic['relax'] = {}
+        for i in range(len(relaxes)):
+            n = load_node(relaxes[i][1])
+            dic['relax'][relaxes[i][0]] ={
+                    'relax_pk': relaxes[i][1],
+                    'init_structure_pk': n.inputs.structure.pk,
+                    'final_structure_pk': n.outputs.relax__structure.pk,
+                    }
+
         return dic
 
     def __get_process_fig(dic):
@@ -60,6 +79,9 @@ def _export_shear(pk, node, get_data, show):
     results = __get_results()
     __get_process_fig(results)
     if get_data:
+        for key in results:
+            if type(results[key]) == np.ndarray:
+                results[key] = results[key].tolist()
         with open('shearworkchain_pk'+str(pk)+'.yaml', 'w') as f:
             yaml.dump(results, f, indent=4, default_flow_style=False)
     if show:

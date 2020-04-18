@@ -103,9 +103,21 @@ def export_structure(pmgstruct, filetype):
 
 def get_description(pmgstruct):
     from pymatgen.io import vasp as pmgvasp
+    import spglib
     poscar = pmgvasp.Poscar(pmgstruct)
-    analyzer = SpacegroupAnalyzer(pmgstruct)
+
+    # pymatgen
+    analyzer = SpacegroupAnalyzer(pmgstruct, symprec=1e-4)
     dataset = analyzer.get_symmetry_dataset()
+
+    # spglib
+    # lattice = pmgstruct.lattice.matrix
+    # scaled_positions = pmgstruct.frac_coords
+    # numbers = [ specie.number for specie in pmgstruct.species ]
+    # cell = (lattice, scaled_positions, numbers)
+    # print(cell)
+    # dataset = spglib.get_symmetry_dataset(cell)
+
     print("-----------------")
     print("STRUCTURE DETAILS")
     print("-----------------")
@@ -115,7 +127,7 @@ def get_description(pmgstruct):
     print('Lattice')
     print(pmgstruct.lattice)
     print('Space Group')
-    print(pmgstruct.get_space_group_info())
+    print(dataset['international'])
     print('Point Group')
     print(dataset['pointgroup'])
     print('Number of Atoms')

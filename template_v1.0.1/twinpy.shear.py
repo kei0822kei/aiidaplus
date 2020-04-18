@@ -10,8 +10,7 @@ from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import run, submit
 from aiida.orm import (load_node, Bool, Code, Dict, Float,
                        Group, Int, Str, KpointsData)
-from twinpy.structure import (make_supercell,
-                              HexagonalClosePacked)
+from aiida_twinpy.common.structure import get_twinpy_structure_from_structure
 from aiidaplus.utils import (get_kpoints,
                              get_default_potcar_mapping,
                              get_elements_from_aiidastructure,
@@ -59,7 +58,7 @@ shear_conf = {
         # 'grids': 2,
         'grids': 7,
         # 'structure_type': 'primitive'  # or 'conventional' or ''
-        'structure_type': ''  # or 'conventional' or ''
+        'is_primitive': True,  # or 'conventional' or ''
         # 'structure_type': 'conventional'  # or 'conventional' or ''
         # 'structure_type': ''  # or 'conventional' or ''
         }
@@ -70,6 +69,7 @@ shear_conf = {
 # structure_pk = 4775  # Ti
 # structure_pk = 11850  # Ti, glass database
 structure_pk = 1250 # Ti_c, aiida database
+# structure_pk = 5024 # Ti_d, aiida database
 elements = get_elements(structure_pk)
 
 #-------
@@ -210,16 +210,15 @@ def main(computer,
     builder.shear_conf = Dict(dict=shear_conf)
 
     # vasp settings
-    pmgstructure = builder.structure.get_pymatgen()
-    hexagonal = HexagonalClosePacked.from_pmgstructure(pmgstructure)
+    hexagonal = get_twinpy_structure_from_structure(builder.structure)
     hexagonal.set_parent(twinmode=shear_conf['twinmode'])
-    pmgparent = hexagonal.get_pymatgen_structure(shear_conf['structure_type'])
+    hexagonal.run(is_primitive=shear_conf['is_primitive'])
+    pmgparent = hexagonal.get_pymatgen_structure()
     kpoints_relax = get_kpoints(structure=pmgparent,
                                 mesh=kpoints['mesh'],
                                 kdensity=kpoints['kdensity'],
                                 offset=kpoints['offset'])
     supercell = deepcopy(pmgparent)
-    # supercell.make_supercell(np.diag(phonon_conf['supercell_matrix']))
     supercell.make_supercell(phonon_conf['supercell_matrix'])
     kpoints_phonon = get_kpoints(structure=supercell,
                                  mesh=kpoints['mesh'],
