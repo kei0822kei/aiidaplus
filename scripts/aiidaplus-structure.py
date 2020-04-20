@@ -107,7 +107,7 @@ def get_description(pmgstruct):
     poscar = pmgvasp.Poscar(pmgstruct)
 
     # pymatgen
-    analyzer = SpacegroupAnalyzer(pmgstruct, symprec=1e-4)
+    analyzer = SpacegroupAnalyzer(pmgstruct, symprec=1e-5) # 1e=5 is the same as VASP SYMPREC default
     dataset = analyzer.get_symmetry_dataset()
 
     # spglib
