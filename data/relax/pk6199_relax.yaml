@@ -1,0 +1,247 @@
+---
+data_type: RelaxWorkChain
+final_energy_no_entropy: -16.61818976
+final_structure_pk: 6965
+initial_structure_pk: 5139
+pk: 6199
+steps:
+    step_00:
+        data_type: VaspWorkChain
+        energy_no_entropy: -16.61838369
+        incar:
+            addgrid: true
+            ediff: 1.0e-08
+            encut: 300
+            gga: PS
+            ialgo: 38
+            ismear: 0
+            lcharg: false
+            lreal: false
+            lwave: false
+            npar: 4
+            prec: Accurate
+            relax:
+                algo: cg
+                convergence_absolute: false
+                convergence_max_iterations: 20
+                convergence_on: true
+                convergence_positions: 0.0001
+                convergence_shape_angles: 0.1
+                convergence_shape_lengths: 0.1
+                convergence_volume: 0.01
+                force_cutoff: 1.0e-06
+                perform: true
+                positions: true
+                shape: true
+                steps: 20
+                volume: true
+            sigma: 0.1
+        kpoints:
+            densities:
+            - 0.2093650466010366
+            - 0.2093650466010366
+            - 0.1515689549642109
+            density: 0.005753726899229669
+            mesh:
+            - 12
+            - 12
+            - 9
+            offset:
+            - 0
+            - 0
+            - 0.5
+        maximum_force: 0.0
+        maximum_stress: 1.40052744
+        pk: 6230
+        potential_family: PBE.54
+        potential_mapping:
+            Ti: Ti_pv
+        structure:
+            final:
+                data_type: StructureData
+                hall: -P 6c 2c
+                hall_number: 488
+                international: P6_3/mmc
+                lattice:
+                -   - 1.44593494
+                    - -2.50443278
+                    - 0.0
+                -   - 1.44593494
+                    - 2.50443278
+                    - 0.0
+                -   - 0.0
+                    - 0.0
+                    - 4.58669623
+                lattice_abc:
+                - 2.8918698795504842
+                - 2.8918698795504842
+                - 4.58669623
+                lattice_angles:
+                - 90.0
+                - 90.0
+                - 119.9999999897161
+                natoms: 2
+                pk: 6678
+                pointgroup: 6/mmm
+                site_symmetry_symbols:
+                - -6m2
+                - -6m2
+                symprec: 1.0e-05
+                volume: 33.21911865492988
+                wyckoffs:
+                - c
+                - c
+            initial:
+                data_type: StructureData
+                hall: -P 6c 2c
+                hall_number: 488
+                international: P6_3/mmc
+                lattice:
+                -   - 1.44388903
+                    - -2.50088916
+                    - 0.0
+                -   - 1.44388903
+                    - 2.50088916
+                    - 0.0
+                -   - 0.0
+                    - 0.0
+                    - 4.60603361
+                lattice_abc:
+                - 2.887778059609125
+                - 2.887778059609125
+                - 4.60603361
+                lattice_angles:
+                - 90.0
+                - 90.0
+                - 119.999999991045
+                natoms: 2
+                pk: 5139
+                pointgroup: 6/mmm
+                site_symmetry_symbols:
+                - -6m2
+                - -6m2
+                symprec: 1.0e-05
+                volume: 33.26483390393543
+                wyckoffs:
+                - c
+                - c
+    step_01:
+        data_type: VaspWorkChain
+        energy_no_entropy: -16.61818979
+        incar:
+            addgrid: true
+            ediff: 1.0e-08
+            encut: 300
+            gga: PS
+            ialgo: 38
+            ismear: 0
+            lcharg: false
+            lreal: false
+            lwave: false
+            npar: 4
+            prec: Accurate
+            relax:
+                algo: cg
+                convergence_absolute: false
+                convergence_max_iterations: 20
+                convergence_on: true
+                convergence_positions: 0.0001
+                convergence_shape_angles: 0.1
+                convergence_shape_lengths: 0.1
+                convergence_volume: 0.01
+                force_cutoff: 1.0e-06
+                perform: true
+                positions: true
+                shape: true
+                steps: 20
+                volume: true
+            sigma: 0.1
+        kpoints:
+            densities:
+            - 0.2090688077948373
+            - 0.2090688077948373
+            - 0.15220796533929865
+            density: 0.0057616450219420915
+            mesh:
+            - 12
+            - 12
+            - 9
+            offset:
+            - 0
+            - 0
+            - 0.5
+        maximum_force: 0.0
+        maximum_stress: 1.39880566
+        pk: 6705
+        potential_family: PBE.54
+        potential_mapping:
+            Ti: Ti_pv
+        structure:
+            final:
+                data_type: StructureData
+                hall: -P 6c 2c
+                hall_number: 488
+                international: P6_3/mmc
+                lattice:
+                -   - 1.44593494
+                    - -2.50443278
+                    - 0.0
+                -   - 1.44593494
+                    - 2.50443278
+                    - 0.0
+                -   - 0.0
+                    - 0.0
+                    - 4.58669623
+                lattice_abc:
+                - 2.8918698795504842
+                - 2.8918698795504842
+                - 4.58669623
+                lattice_angles:
+                - 90.0
+                - 90.0
+                - 119.9999999897161
+                natoms: 2
+                pk: 6870
+                pointgroup: 6/mmm
+                site_symmetry_symbols:
+                - -6m2
+                - -6m2
+                symprec: 1.0e-05
+                volume: 33.21911865492988
+                wyckoffs:
+                - c
+                - c
+            initial:
+                data_type: StructureData
+                hall: -P 6c 2c
+                hall_number: 488
+                international: P6_3/mmc
+                lattice:
+                -   - 1.44593494
+                    - -2.50443278
+                    - 0.0
+                -   - 1.44593494
+                    - 2.50443278
+                    - 0.0
+                -   - 0.0
+                    - 0.0
+                    - 4.58669623
+                lattice_abc:
+                - 2.8918698795504842
+                - 2.8918698795504842
+                - 4.58669623
+                lattice_angles:
+                - 90.0
+                - 90.0
+                - 119.9999999897161
+                natoms: 2
+                pk: 6678
+                pointgroup: 6/mmm
+                site_symmetry_symbols:
+                - -6m2
+                - -6m2
+                symprec: 1.0e-05
+                volume: 33.21911865492988
+                wyckoffs:
+                - c
+                - c

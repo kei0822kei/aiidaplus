@@ -161,7 +161,8 @@ def get_kpoints(structure:Structure,
         offset (list): shift from (0,0,0)
 
     Returns:
-        dict: mesh, offset and densities of kpoints of each axis
+        dict: mesh, offset, densities of kpoints of each axis
+              and density in resicprocal lattice
 
     Raises:
         ValueError: both mesh and kdensity are None
@@ -206,5 +207,11 @@ def get_kpoints(structure:Structure,
         lattice_norms = np.array(structure.lattice.reciprocal_lattice.abc)
         densities = lattice_norms / mesh
         kgrids = {'mesh': mesh, 'densities': densities}
+
     kgrids['offset'] = offset
+
+    m = kgrids['mesh']
+    density = structure.lattice.reciprocal_lattice.volume / (m[0]*m[1]*m[2])
+    kgrids['density'] = density
+
     return kgrids

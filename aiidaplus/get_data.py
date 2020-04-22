@@ -5,18 +5,20 @@
 get data from aiida pk
 """
 import numpy as np
+import warnings
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from aiida.orm import load_node
 from aiida.common import exceptions
 from aiida.cmdline.utils.decorators import with_dbenv
+from aiidaplus.utils import get_kpoints
 
-@with_dbenv
+@with_dbenv()
 def get_node_from_pk(pk):
     """
     get node from pk
     """
-    node = load_node(pk)
+    return load_node(pk)
 
 def check_process_class(node,
                         expected_process_class:str):
@@ -30,7 +32,7 @@ def check_process_class(node,
     Raises:
         AssertionError: input node is not the same as expected
     """
-    assert node.process_class == expected_process_class, \
+    assert node.process_class.get_name() == expected_process_class, \
             "input node: {}, expected: {} (NOT MATCH)". \
             format(node.process_class, expected_process_class)
 
@@ -52,8 +54,8 @@ def get_structure_data_from_pymatgen(pmgstructure:Structure,
     dic['symprec'] = symprec
     dic['volume'] = pmgstructure.lattice.volume
     dic['lattice'] = pmgstructure.lattice.matrix.tolist()
-    dic['lattice_abc'] = pmgstructure.lattice.abc
-    dic['lattice_angles'] = pmgstructure.lattice.angles
+    dic['lattice_abc'] = list(pmgstructure.lattice.abc)
+    dic['lattice_angles'] = list(pmgstructure.lattice.angles)
     dic['international'] = dataset['international']
     dic['pointgroup'] = dataset['pointgroup']
     dic['natoms'] = len(pmgstructure.species)
@@ -82,14 +84,12 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
     """
     get vasp data from pk
 
-    Raises:
-        Warning: final structure does not exist
-
     Note:
-        symprec=1e-5 (default), which is the same as VASP SYMPREC default
+        - symprec=1e-5 (default), which is the same as VASP SYMPREC default
+        - Warning: final structure does not exist
     """
     node = get_node_from_pk(pk)
-    check_process_class(node, 'aiida_vasp.workchains.vasp.VaspWorkChain')
+    check_process_class(node, 'VaspWorkChain')
     results = node.outputs.misc.get_dict()
 
     structure = {}
@@ -103,7 +103,13 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
                                              symprec=symprec)
         structure['final'] = final_structure
     except exceptions.NotExistent:
-        raise Warning("final structure does not exist")
+        warnings.warn("final structure does not exist")
+
+    kpoints = get_kpoints(
+            structure=load_node(initial_structure_pk).get_pymatgen_structure(),
+            mesh=node.inputs.kpoints.get_kpoints_mesh()[0],
+            )
+    kpoints['densities'] = kpoints['densities'].tolist()
 
     dic = {}
     dic['data_type'] = 'VaspWorkChain'
@@ -111,11 +117,11 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
     dic['incar'] = node.inputs.parameters.get_dict()
     dic['potential_family'] = node.inputs.potential_family.value
     dic['potential_mapping'] = node.inputs.potential_mapping.get_dict()
-    dic['kpoints'] = node.inputs.kpoints.get_kpoints_mesh()
+    dic['kpoints'] = kpoints
     dic['structure'] = structure
     dic['maximum_force'] = results['maximum_force']
     dic['maximum_stress'] = results['maximum_stress']
-    dic['energy_no_entropy'] = results['energy_no_entropy']
+    dic['energy_no_entropy'] = results['total_energies']['energy_no_entropy']
 
     return dic
 
@@ -123,26 +129,24 @@ def get_relax_data(pk, symprec=1e-5) -> dict:
     """
     get relax data from pk
 
-    Raises:
-        Warning: final vasp calculation is not static calc
-
     Note:
-        symprec=1e-5 (default), which is the same as VASP SYMPREC default
+        - symprec=1e-5 (default), which is the same as VASP SYMPREC default
+        - Warning: final vasp calculation is not static calc
     """
     node = get_node_from_pk(pk)
-    check_process_class(node, 'aiida_vasp.workchains.relax.RelaxWorkChain')
+    check_process_class(node, 'RelaxWorkChain')
 
     # drop final static calculation
-    vasp_pks = [ vasp_node.called[0] for vasp_node in node.called ]
-    if 'nsw' in \
-            get_node_from_pk(vasp_pks[-1]).inputs.parameters.get_dict():
+    vasp_pks = [ vasp_node.called[0].pk for vasp_node in node.called ]
+    vasp_pks.reverse()
+    if 'nsw' not in \
+            get_node_from_pk(vasp_pks[-1]).inputs.parameters.get_dict().keys():
         del vasp_pks[-1]
     else:
-        raise Warning("final vasp calculation is not static calc")
-    vasp_pks.reverse()
+        warnings.warn("final vasp calculation is not static calc")
     vasp_results = {}
     for i, vasp_pk in enumerate(vasp_pks):
-        vasp_results['step_%02d' % str(i)] = get_vasp_data(vasp_pk,
+        vasp_results['step_%02d' % i] = get_vasp_data(vasp_pk,
                                                            symprec=symprec)
 
     dic = {}

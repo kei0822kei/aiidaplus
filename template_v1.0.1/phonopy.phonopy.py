@@ -50,7 +50,8 @@ description = "this is description"
 # structure_pk = 4775  # Ti
 # structure_pk = 30401  # AgBr (relaxed)
 # structure_pk = 4545  # Ne, for glass database
-structure_pk = 11850  # Ti, glass database
+# structure_pk = 11850  # Ti, glass database
+structure_pk = 6836  # Ti, relaxed, aiida database
 elements = get_elements(structure_pk)
 
 #-------
@@ -76,6 +77,7 @@ incar_settings = {
     'lreal': False,
     'lwave': False,
     'npar': 4,
+    'kpar': 2,
     'prec': 'Accurate',
     }
 
@@ -89,43 +91,34 @@ incar_settings['encut'] = encut
 
 ### metal or not metal
 ##### metal
-# smearing_settings = {
-#     'ismear': 1,
-#     'sigma': 0.2
-#     }
-##### not metal
 smearing_settings = {
-    'ismear': 0,
-    'sigma': 0.01
+    'ismear': 1,
+    'sigma': 0.4
     }
+##### not metal
+# smearing_settings = {
+#     'ismear': 0,
+#     'sigma': 0.01
+#     }
 
 incar_settings.update(smearing_settings)
 
-#--------
-# kpoints
-#--------
-kpoints = {
-    'mesh': [3, 3, 3],
+#------------------------
+# kpoints for fc2 and nac
+#------------------------
+kpoints_fc2 = {
+    'mesh': [6, 6, 6],
     'kdensity': None,
     'offset': [0.5, 0.5, 0.5]
-    # 'offset': None
     }
 
-### not use kdensity
-# kpoints = {
-#     'mesh': [6, 6, 6],
-#     'kdensity': None,
-#     'offset': None
-#     # 'offset': [0.5, 0.5, 0.5]
-#     }
+# when calculating nac phonopy always uses primitive
+# 'offset' is set by phonopy automatically ?
+kpoints_nac = {
+    'mesh': [12, 12 ,12],
+    'kdensity': None,
+    }
 
-### use kdensity
-# kpoints = {
-#     'mesh': None,
-#     'kdensity': 0.2,
-#     'offset': None
-#     # 'offset': [0.5, 0.5, 0.5]
-#     }
 
 #--------
 # phonopy
@@ -164,15 +157,15 @@ def main(computer,
     def get_vasp_settings():
         pmgstructure = load_node(structure_pk).get_pymatgen()
         pmgstructure.make_supercell(supercell_matrix)
-        kpoints_fc2 = get_kpoints(
+        kpt_fc2 = get_kpoints(
                 structure=pmgstructure,
-                mesh=kpoints['mesh'],
-                kdensity=kpoints['kdensity'],
-                offset=kpoints['offset'])
+                mesh=kpoints_fc2['mesh'],
+                kdensity=kpoints_fc2['kdensity'],
+                offset=kpoints_fc2['offset'])
         dic = {}
         base_config = {'code_string': vasp_code+'@'+computer,
-                       'kpoints_mesh': kpoints_fc2['mesh'],
-                       'kpoints_offset': kpoints_fc2['offset'],
+                       'kpoints_mesh': kpt_fc2['mesh'],
+                       'kpoints_offset': kpt_fc2['offset'],
                        'potential_family': potential_family,
                        'potential_mapping': potential_mapping,
                        'options': {'resources': {'parallel_env': 'mpi*',
@@ -194,15 +187,12 @@ def main(computer,
             nac_incar_dict = {'lepsilon': True}
             nac_incar_dict.update(incar_settings)
             del nac_incar_dict['npar']
-            density = np.average(kpoints_fc2['densities'])
-            print("for nac calc, always primitive structure is used")
-            print("kpoints density for calc fc2 was: %f" % density)
-            print("for calc nac, multiply kpoints density is used")
-            print("from {} to {}".format(density, density*2))
+            del nac_incar_dict['kpar']
             kpoints_nac = get_kpoints(
                     structure=pmgstructure.get_primitive_structure(),
-                    kdensity=density*2,
-                    offset=kpoints['offset'])
+                    mesh=kpoints_nac['mesh'],
+                    kdensity=kpoints_nac['kdensity'],
+                    offset=[0,0,0])
             nac_config.update({'kpoints_mesh': kpoints_nac['mesh'],
                                'parser_settings': nac_parser_settings,
                                'parameters': nac_incar_dict})

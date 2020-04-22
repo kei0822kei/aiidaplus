@@ -7,8 +7,10 @@ This script deals with structure
 """
 
 import argparse
+from pprint import pprint
 from aiida.cmdline.utils.decorators import with_dbenv
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from aiidaplus.get_data import get_structure_data_from_pymatgen
 
 # argparse
 def get_argparse():
@@ -61,10 +63,11 @@ def get_pmgstructure(filename, filetype, primitive):
         - If total occupancy of a site is between 1 and
           occupancy_tolerance, the occupancies will be scaled down to 1.
 
-        site_tolerance = 1e-4
+        site_tolerance = 1e-5
         - This tolerance is used to determine if two sites are sitting
           in the same position, in which case they will be combined to
           a single disordered site.
+        - 1e-5 is the same as VASP SYMPREC defualt
 
         Raises
         ------
@@ -72,7 +75,7 @@ def get_pmgstructure(filename, filetype, primitive):
             specified filetype is not supported
     """
     occupancy_tolerance = 1.
-    site_tolerance = 1e-4
+    site_tolerance = 1e-5
 
     if filetype == 'cif':
         from pymatgen.io import cif as pmgcif
@@ -103,41 +106,10 @@ def export_structure(pmgstruct, filetype):
 
 def get_description(pmgstruct):
     from pymatgen.io import vasp as pmgvasp
-    import spglib
-    poscar = pmgvasp.Poscar(pmgstruct)
-
-    # pymatgen
-    analyzer = SpacegroupAnalyzer(pmgstruct, symprec=1e-5) # 1e=5 is the same as VASP SYMPREC default
-    dataset = analyzer.get_symmetry_dataset()
-
-    # spglib
-    # lattice = pmgstruct.lattice.matrix
-    # scaled_positions = pmgstruct.frac_coords
-    # numbers = [ specie.number for specie in pmgstruct.species ]
-    # cell = (lattice, scaled_positions, numbers)
-    # print(cell)
-    # dataset = spglib.get_symmetry_dataset(cell)
-
-    print("-----------------")
-    print("STRUCTURE DETAILS")
-    print("-----------------")
-    print('Object Type: StructureData')
-    print('Volume')
-    print(pmgstruct.lattice.volume)
-    print('Lattice')
-    print(pmgstruct.lattice)
-    print('Space Group')
-    print(dataset['international'])
-    print('Point Group')
-    print(dataset['pointgroup'])
-    print('Number of Atoms')
-    print(poscar.natoms)
-    print('Wyckoffs')
-    print(dataset['wyckoffs'])
-    print('site symmetry')
-    print(dataset['site_symmetry_symbols'])
-    print('hall')
-    print("{}, ({})".format(dataset['hall'], dataset['hall_number']))
+    data = get_structure_data_from_pymatgen(pmgstruct)
+    for key in data:
+        print(key+':')
+        pprint(data[key])
 
 def import_to_aiida(pmgstruct, label, group=None):
     from aiida.orm.nodes.data import StructureData
