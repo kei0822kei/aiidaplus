@@ -8,9 +8,11 @@ import numpy as np
 import warnings
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.io.phonopy import get_phonopy_structure
 from aiida.orm import load_node
 from aiida.common import exceptions
 from aiida.cmdline.utils.decorators import with_dbenv
+from phonopy import Phonopy
 from aiidaplus.utils import get_kpoints
 
 @with_dbenv()
@@ -159,3 +161,19 @@ def get_relax_data(pk, symprec=1e-5) -> dict:
     dic['steps'] = vasp_results
 
     return dic
+
+def get_phonon_from_aiida(pk):
+    """
+    get phonon object from aiida pk
+    """
+    node = load_node(pk)
+    pmgstructure = node.inputs.structure.get_pymatgen()
+    unitcell = get_phonopy_structure(pmgstructure)
+    phonon_settings = node.outputs.phonon_setting_info.get_dict()
+    phonon = Phonopy(unitcell,
+                     supercell_matrix=phonon_settings['supercell_matrix'],
+                     primitive_matrix=phonon_settings['primitive_matrix'])
+    phonon.set_displacement_dataset(phonon_settings['displacement_dataset'])
+    phonon.set_forces(node.outputs.force_sets.get_array('force_sets'))
+    phonon.produce_force_constants()
+    return phonon

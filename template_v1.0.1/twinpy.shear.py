@@ -43,8 +43,8 @@ wf = 'twinpy.shear'
 label = "this is label"
 # label = "phonon calc test (conv)"
 description = "this is description"
-dry_run = True
-# dry_run = False
+# dry_run = True
+dry_run = False
 is_phonon = True
 max_wallclock_seconds_relax = 10 * 3600
 max_wallclock_seconds_phonon = 10 * 3600
@@ -68,7 +68,7 @@ shear_conf = {
 #----------
 # structure_pk = 4775  # Ti
 # structure_pk = 11850  # Ti, glass database
-structure_pk = 1250 # Ti_c, aiida database
+structure_pk = 6836 # Ti_c, aiida database
 # structure_pk = 5024 # Ti_d, aiida database
 elements = get_elements(structure_pk)
 

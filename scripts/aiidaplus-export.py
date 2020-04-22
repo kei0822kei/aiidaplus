@@ -15,7 +15,9 @@ from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.plugins import WorkflowFactory
 from pymatgen.io import vasp as pmgvasp
 from aiidaplus.get_data import (get_structure_data,
-                                get_relax_data)
+                                get_relax_data,
+                                get_phonon_from_aiida)
+from aiidaplus.utils import get_kpoints
 from aiidaplus import plot as aiidaplot
 from pprint import pprint
 
@@ -103,6 +105,23 @@ def _export_structure(pk, get_data, show):
     if get_data:
         filename = 'pk'+str(pk)+'_structure.yaml'
         dic2yaml(data, filename)
+
+def _export_phonon(pk, get_data, show):
+    phonon = get_phonon_from_aiida(pk)
+    if show:
+        pmgstructure = load_node(pk).inputs.structure.get_pymatgen_structure()
+        mesh = get_kpoints(structure=pmgstructure.get_primitive_structure(tolerance=1e-5),
+                           kdensity=0.15)['mesh']
+        print("run total dos with mesh: {}".format(mesh))
+        phonon.run_mesh(mesh)
+        phonon.run_total_dos()
+        phonon.auto_band_structure(plot=True,
+                                   write_yaml=False,
+                                   filename=None,
+                                   npoints=101).show()
+    if get_data:
+        filename = 'pk'+str(pk)+'_phonon.yaml'
+        phonon.save(filename)
 
 def _export_relax(pk, get_data, show):
 
@@ -192,6 +211,8 @@ def main(pk, get_data=False, show=False):
         workchain_name = node.process_class.get_name()
         if workchain_name == 'RelaxWorkChain':
             _export_relax(pk, get_data, show)
+        elif workchain_name == 'PhonopyWorkChain':
+            _export_phonon(pk, get_data, show)
         elif workchain_name == 'ShearWorkChain':
             _export_shear(pk, node, get_data, show)
         else:
