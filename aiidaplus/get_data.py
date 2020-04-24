@@ -77,7 +77,7 @@ def get_structure_data(pk, symprec=1e-5) -> dict:
     """
     node = get_node_from_pk(pk)
     pmgstructure = node.get_pymatgen()
-    dic = get_structure_data_from_pymatgen(pmgstructure)
+    dic = get_structure_data_from_pymatgen(pmgstructure, symprec=symprec)
     dic['pk'] = pk
     dic['data_type'] = 'StructureData'
     return dic
@@ -114,7 +114,7 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
     kpoints['densities'] = kpoints['densities'].tolist()
 
     dic = {}
-    dic['data_type'] = 'VaspWorkChain'
+    dic['data_type'] = node.process_class.get_name()
     dic['pk'] = pk
     dic['incar'] = node.inputs.parameters.get_dict()
     dic['potential_family'] = node.inputs.potential_family.value
@@ -152,7 +152,7 @@ def get_relax_data(pk, symprec=1e-5) -> dict:
                                                            symprec=symprec)
 
     dic = {}
-    dic['data_type'] = 'RelaxWorkChain'
+    dic['data_type'] = node.process_class.get_name()
     dic['pk'] = pk
     dic['initial_structure_pk'] = node.inputs.structure.pk
     dic['final_structure_pk'] = node.outputs.structure.pk
@@ -162,18 +162,34 @@ def get_relax_data(pk, symprec=1e-5) -> dict:
 
     return dic
 
-def get_phonon_from_aiida(pk):
+def get_phonon_data(pk, get_phonon=False):
     """
     get phonon object from aiida pk
     """
     node = load_node(pk)
-    pmgstructure = node.inputs.structure.get_pymatgen()
-    unitcell = get_phonopy_structure(pmgstructure)
-    phonon_settings = node.outputs.phonon_setting_info.get_dict()
-    phonon = Phonopy(unitcell,
-                     supercell_matrix=phonon_settings['supercell_matrix'],
-                     primitive_matrix=phonon_settings['primitive_matrix'])
-    phonon.set_displacement_dataset(phonon_settings['displacement_dataset'])
-    phonon.set_forces(node.outputs.force_sets.get_array('force_sets'))
-    phonon.produce_force_constants()
-    return phonon
+    symprec = node.inputs.symmetry_tolerance.value
+    dic = {}
+    dic['data_type'] = node.process_class.get_name()
+    dic['pk'] = pk
+    dic['calculator_settings'] = node.inputs.calculator_settings.get_dict()
+    dic['symmetry_tolerance'] = symprec
+    dic['phonon_setting_info'] = node.outputs.phonon_setting_info.get_dict()
+    dic['structure'] = {
+            'input': get_structure_data(node.inputs.structure.pk, symprec),
+            'primitive': get_structure_data(node.outputs.primitive.pk, symprec),
+            'supercell': get_structure_data(node.outputs.supercell.pk, symprec),
+            }
+
+    if get_phonon:
+        pmgstructure = node.inputs.structure.get_pymatgen()
+        unitcell = get_phonopy_structure(pmgstructure)
+        phonon_settings = node.outputs.phonon_setting_info.get_dict()
+        phonon = Phonopy(unitcell,
+                         supercell_matrix=phonon_settings['supercell_matrix'],
+                         primitive_matrix=phonon_settings['primitive_matrix'])
+        phonon.set_displacement_dataset(phonon_settings['displacement_dataset'])
+        phonon.set_forces(node.outputs.force_sets.get_array('force_sets'))
+        phonon.produce_force_constants()
+        return dic, phonon
+    else:
+        return dic

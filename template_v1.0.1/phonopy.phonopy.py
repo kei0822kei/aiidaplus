@@ -117,6 +117,7 @@ kpoints_fc2 = {
 kpoints_nac = {
     'mesh': [12, 12 ,12],
     'kdensity': None,
+    # 'offset': [0,0,0],  # there is no input parameters, see script below
     }
 
 
@@ -192,7 +193,7 @@ def main(computer,
                     structure=pmgstructure.get_primitive_structure(),
                     mesh=kpoints_nac['mesh'],
                     kdensity=kpoints_nac['kdensity'],
-                    offset=[0,0,0])
+                    offset=None)
             nac_config.update({'kpoints_mesh': kpoints_nac['mesh'],
                                'parser_settings': nac_parser_settings,
                                'parameters': nac_incar_dict})

@@ -16,7 +16,7 @@ from aiida.plugins import WorkflowFactory
 from pymatgen.io import vasp as pmgvasp
 from aiidaplus.get_data import (get_structure_data,
                                 get_relax_data,
-                                get_phonon_from_aiida)
+                                get_phonon_data)
 from aiidaplus.utils import get_kpoints
 from aiidaplus import plot as aiidaplot
 from pprint import pprint
@@ -107,7 +107,7 @@ def _export_structure(pk, get_data, show):
         dic2yaml(data, filename)
 
 def _export_phonon(pk, get_data, show):
-    phonon = get_phonon_from_aiida(pk)
+    data, phonon = get_phonon_data(pk, get_phonon=True)
     if show:
         pmgstructure = load_node(pk).inputs.structure.get_pymatgen_structure()
         mesh = get_kpoints(structure=pmgstructure.get_primitive_structure(tolerance=1e-5),
@@ -115,13 +115,16 @@ def _export_phonon(pk, get_data, show):
         print("run total dos with mesh: {}".format(mesh))
         phonon.run_mesh(mesh)
         phonon.run_total_dos()
-        phonon.auto_band_structure(plot=True,
+        phonon.auto_band_structure(plot=False,
                                    write_yaml=False,
                                    filename=None,
-                                   npoints=101).show()
+                                   npoints=101)
+        phonon.plot_band_structure_and_dos().show()
     if get_data:
         filename = 'pk'+str(pk)+'_phonon.yaml'
-        phonon.save(filename)
+        phonon_filename = 'pk'+str(pk)+'_phonopy.yaml'
+        dic2yaml(data, filename)
+        phonon.save(phonon_filename)
 
 def _export_relax(pk, get_data, show):
 

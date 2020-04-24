@@ -41,9 +41,7 @@ def get_elements(pk):
 #----------------
 wf = 'twinpy.shear'
 label = "this is label"
-# label = "phonon calc test (conv)"
 description = "this is description"
-# dry_run = True
 dry_run = False
 is_phonon = True
 max_wallclock_seconds_relax = 10 * 3600
@@ -89,13 +87,13 @@ potential_mapping = get_default_potcar_mapping(elements)
 incar_settings = {
     'addgrid': True,
     'ediff': 1e-6,
-    # 'ediff': 1e-2,
     'gga': 'PS',
     'ialgo': 38,
     'lcharg': False,
     'lreal': False,
     'lwave': False,
     'npar': 4,
+    'kpar': 2,
     'prec': 'Accurate',
     }
 
@@ -130,12 +128,13 @@ phonon_conf = {
 #---------------
 # relax_settings
 #---------------
+# volume and shape relaxation is False by default
 relax_conf = {
     # 'algo': 'cg',  # v1.0.1 cannot set 'rd'
     'steps': 40,
     'convergence_absolute': False,
     # 'convergence_max_iterations': 3,
-    'convergence_max_iterations': 1,
+    'convergence_max_iterations': 10,
     'convergence_on': True,
     'convergence_positions': 0.01,
     # 'force_cutoff': 0.0001,
@@ -173,6 +172,7 @@ kpoints = {
 kpoints_phonon = {
     'mesh': None,
     'kdensity': 0.2,
+    'offset': None,
     }
 
 
@@ -220,10 +220,10 @@ def main(computer,
                                 offset=kpoints['offset'])
     supercell = deepcopy(pmgparent)
     supercell.make_supercell(phonon_conf['supercell_matrix'])
-    kpoints_phonon = get_kpoints(structure=supercell,
-                                 mesh=kpoints['mesh'],
-                                 kdensity=kpoints['kdensity'],
-                                 offset=kpoints['offset'])
+    kpoints_ph = get_kpoints(structure=supercell,
+                             mesh=kpoints_phonon['mesh'],
+                             kdensity=kpoints_phonon['kdensity'],
+                             offset=kpoints_phonon['offset'])
     base_settings = {
             'vasp_code': 'vasp544mpi',
             'incar_settings': incar_settings,
@@ -240,7 +240,7 @@ def main(computer,
         })
     phonon_settings = deepcopy(base_settings)
     phonon_settings.update({
-        'kpoints': {'mesh': kpoints_phonon['mesh'], 'offset': kpoints_phonon['offset']},
+        'kpoints': {'mesh': kpoints_ph['mesh'], 'offset': kpoints_ph['offset']},
         'options': {'queue_name': queue,
                     'max_wallclock_seconds': max_wallclock_seconds_phonon},
         'phonon_conf': phonon_conf,
