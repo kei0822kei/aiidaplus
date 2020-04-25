@@ -16,7 +16,8 @@ from aiida.plugins import WorkflowFactory
 from pymatgen.io import vasp as pmgvasp
 from aiidaplus.get_data import (get_structure_data,
                                 get_relax_data,
-                                get_phonon_data)
+                                get_phonon_data,
+                                get_shear_data)
 from aiidaplus.utils import get_kpoints
 from aiidaplus import plot as aiidaplot
 from pprint import pprint
@@ -41,34 +42,34 @@ def dic2yaml(dic, filename):
         yaml.dump(dic, f, indent=4, default_flow_style=False, explicit_start=True)
 
 # functions
-def _export_shear(pk, node, get_data, show):
+def _export_shear(pk, get_data, show):
 
-    def __get_results():
-        parent = node.outputs.parent.get_pymatgen()
-        dic = {}
-        dic['atoms_num'] = len(parent.species)
-        dic['energies'] = np.array(node.outputs.relax_results.get_dict()['energies'])
-        dic['strain'] = node.outputs.strain.value \
-                * np.array(node.outputs.shear_ratios['shear_ratios'])
+    # def __get_results():
+    #     parent = node.outputs.parent.get_pymatgen()
+    #     dic = {}
+    #     dic['atoms_num'] = len(parent.species)
+    #     dic['energies'] = np.array(node.outputs.relax_results.get_dict()['energies'])
+    #     dic['strain'] = node.outputs.strain.value \
+    #             * np.array(node.outputs.shear_ratios['shear_ratios'])
 
-        # get relaxed structure pk
-        qb = QueryBuilder()
-        qb.append(Node, filters={'id':{'==': pk}}, tag='wf')
-        qb.append(RELAX_WF, with_incoming='wf', project=['label', 'id'])
-        relaxes = qb.all()
-        relaxes.sort(key=lambda x: x[0])
-        dic['relax'] = {}
-        for i in range(len(relaxes)):
-            n = load_node(relaxes[i][1])
-            dic['relax'][relaxes[i][0]] ={
-                    'relax_pk': relaxes[i][1],
-                    'init_structure_pk': n.inputs.structure.pk,
-                    'final_structure_pk': n.outputs.relax__structure.pk,
-                    }
+    #     # get relaxed structure pk
+    #     qb = QueryBuilder()
+    #     qb.append(Node, filters={'id':{'==': pk}}, tag='wf')
+    #     qb.append(RELAX_WF, with_incoming='wf', project=['label', 'id'])
+    #     relaxes = qb.all()
+    #     relaxes.sort(key=lambda x: x[0])
+    #     dic['relax'] = {}
+    #     for i in range(len(relaxes)):
+    #         n = load_node(relaxes[i][1])
+    #         dic['relax'][relaxes[i][0]] ={
+    #                 'relax_pk': relaxes[i][1],
+    #                 'init_structure_pk': n.inputs.structure.pk,
+    #                 'final_structure_pk': n.outputs.relax__structure.pk,
+    #                 }
 
-        return dic
+    #     return dic
 
-    def __get_process_fig(dic):
+    def _show(dic):
         fig = plt.figure()
         # ax1 = fig.add_axes((0.15, 0.1, 0.35,  0.35))
         # ax2 = fig.add_axes((0.63, 0.1, 0.35, 0.35))
@@ -77,24 +78,27 @@ def _export_shear(pk, node, get_data, show):
         ax1 = fig.add_subplot(111)
         aiidaplot.line_chart(
                 ax1,
-                dic['strain'],
-                (dic['energies'] - dic['energies'][0]) * 1000 / dic['atoms_num'],
+                dic['strain'] * np.array(dic['shear_ratios']),
+                (np.array(dic['relax_results']['energies']) \
+                    - dic['relax_results']['energies'][0]) \
+                      * 1000 / dic['parent']['natoms'],
                 "strain (angstrom)",
                 "energy (meV / atom)"
                 )
         fig.suptitle('shear result pk: %s' % pk)
+        plt.show()
 
-    results = __get_results()
-    __get_process_fig(results)
+    results = get_shear_data(pk)
+    basename = 'pk'+str(pk)+'_shear'
     if get_data:
-        for key in results:
-            if type(results[key]) == np.ndarray:
-                results[key] = results[key].tolist()
-        with open('shearworkchain_pk'+str(pk)+'.yaml', 'w') as f:
+        # for key in results:
+        #     if type(results[key]) == np.ndarray:
+        #         results[key] = results[key].tolist()
+        yamlname = basename+'.yaml'
+        with open(yamlname, 'w') as f:
             yaml.dump(results, f, indent=4, default_flow_style=False)
     if show:
-        plt.savefig('shearworkchain_pk'+str(pk)+'.png')
-        plt.show()
+        _show(results)
 
 def _export_structure(pk, get_data, show):
     data = get_structure_data(pk)
@@ -178,7 +182,7 @@ def _export_relax(pk, get_data, show):
     if get_data:
         filename = 'pk'+str(pk)+'_relax.yaml'
         dic2yaml(data, filename)
-        plt.savefig('pk'+str(pk)+'_relax.png')
+        # plt.savefig('pk'+str(pk)+'_relax.png')
     if show:
         plt.show()
 
@@ -217,7 +221,7 @@ def main(pk, get_data=False, show=False):
         elif workchain_name == 'PhonopyWorkChain':
             _export_phonon(pk, get_data, show)
         elif workchain_name == 'ShearWorkChain':
-            _export_shear(pk, node, get_data, show)
+            _export_shear(pk, get_data, show)
         else:
             raise ValueError("workchain %s is not supported" % workchain_name)
     else:

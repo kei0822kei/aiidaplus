@@ -9,11 +9,15 @@ import warnings
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.phonopy import get_phonopy_structure
-from aiida.orm import load_node
+from aiida.orm import load_node, QueryBuilder, Node
 from aiida.common import exceptions
 from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.plugins import WorkflowFactory
 from phonopy import Phonopy
 from aiidaplus.utils import get_kpoints
+
+RELAX_WF = WorkflowFactory('vasp.relax')
+PHONOPY_WF = WorkflowFactory('phonopy.phonopy')
 
 @with_dbenv()
 def get_node_from_pk(pk):
@@ -193,3 +197,33 @@ def get_phonon_data(pk, get_phonon=False):
         return dic, phonon
     else:
         return dic
+
+def get_shear_data(pk):
+    """
+    get shear data
+    """
+    # get called pks
+    node = load_node(pk)
+    rlx_qb = QueryBuilder()
+    rlx_qb.append(Node, filters={'id':{'==': pk}}, tag='wf')
+    rlx_qb.append(RELAX_WF, with_incoming='wf', project=['label', 'id'])
+    ph_qb = QueryBuilder()
+    ph_qb.append(Node, filters={'id':{'==': pk}}, tag='wf')
+    ph_qb.append(PHONOPY_WF, with_incoming='wf', project=['label', 'id'])
+    relaxes = rlx_qb.all()
+    relaxes.sort(key=lambda x: x[0])
+    phonons = ph_qb.all()
+    phonons.sort(key=lambda x: x[0])
+
+    dic = {}
+    dic['pk'] = pk
+    dic['calculator_settings'] = node.inputs.calculator_settings.get_dict()
+    dic['shear_conf'] = node.inputs.shear_conf.get_dict()
+    dic['parent'] = get_structure_data(node.outputs.parent.pk)
+    dic['relax_results'] = node.outputs.relax_results.get_dict()
+    dic['shear_ratios'] = node.outputs.shear_ratios.get_dict()['shear_ratios']
+    dic['strain'] = node.outputs.strain.value
+    dic['relax_pks'] = np.array(relaxes)[:,1].astype(int).tolist()
+    dic['phonon_pks'] = np.array(phonons)[:,1].astype(int).tolist()
+
+    return dic

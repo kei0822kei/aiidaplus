@@ -1,0 +1,211 @@
+calculator_settings:
+    phonon:
+        incar_settings:
+            addgrid: true
+            ediff: 1.0e-08
+            encut: 300
+            gga: PS
+            ialgo: 38
+            ismear: 1
+            kpar: 2
+            lcharg: false
+            lreal: false
+            lwave: false
+            npar: 4
+            prec: Accurate
+            sigma: 0.4
+        kpoints:
+            mesh:
+            - 2
+            - 2
+            - 2
+            offset:
+            - 0
+            - 0
+            - 0.5
+        options:
+            max_wallclock_seconds: 36000
+            queue_name: ''
+        phonon_conf:
+            distance: 0.02
+            mesh:
+            - 18
+            - 18
+            - 10
+            supercell_matrix:
+            - 4
+            - 4
+            - 3
+            symmetry_tolerance: 1.0e-05
+        potential_family: PBE.54
+        potential_mapping:
+            Ti: Ti_pv
+        vasp_code: vasp544mpi
+    relax:
+        clean_workdir: false
+        incar_settings:
+            addgrid: true
+            ediff: 1.0e-08
+            encut: 300
+            gga: PS
+            ialgo: 38
+            ismear: 1
+            kpar: 2
+            lcharg: false
+            lreal: false
+            lwave: false
+            npar: 4
+            prec: Accurate
+            sigma: 0.4
+        kpoints:
+            mesh:
+            - 8
+            - 8
+            - 6
+            offset:
+            - 0
+            - 0
+            - 0.5
+        options:
+            max_wallclock_seconds: 36000
+            queue_name: ''
+        potential_family: PBE.54
+        potential_mapping:
+            Ti: Ti_pv
+        relax_conf:
+            convergence_absolute: false
+            convergence_max_iterations: 10
+            convergence_on: true
+            convergence_positions: 0.01
+            force_cutoff: 1.0e-07
+            steps: 40
+        vasp_code: vasp544mpi
+parent:
+    data_type: StructureData
+    hall: -P 6c 2c
+    hall_number: 488
+    international: P6_3/mmc
+    lattice:
+    -   - 1.44676428
+        - -2.50586924
+        - 0.0
+    -   - 1.44676428
+        - 2.50586924
+        - 0.0
+    -   - 0.0
+        - 0.0
+        - 4.58098687
+    lattice_abc:
+    - 2.8935285604020042
+    - 2.8935285604020042
+    - 4.58098687
+    lattice_angles:
+    - 90.0
+    - 90.0
+    - 120.0000000091917
+    natoms: 2
+    pk: 8373
+    pointgroup: 6/mmm
+    site_symmetry_symbols:
+    - -6m2
+    - -6m2
+    symprec: 1.0e-05
+    volume: 33.21583889928421
+    wyckoffs:
+    - c
+    - c
+phonon_pks:
+- 10484
+- 10492
+- 10504
+- 10528
+- 10543
+- 10566
+- 10595
+- 10635
+- 10671
+- 10707
+- 10737
+- 10763
+- 10782
+- 10799
+- 10827
+- 10858
+- 10887
+- 10917
+- 10954
+- 10983
+- 10999
+pk: 8369
+relax_pks:
+- 8418
+- 8443
+- 8468
+- 8493
+- 8518
+- 8543
+- 8568
+- 8593
+- 8618
+- 8643
+- 8668
+- 8693
+- 8718
+- 8743
+- 8768
+- 8793
+- 8818
+- 8843
+- 8868
+- 8893
+- 8918
+relax_results:
+    energies:
+    - -16.61830936
+    - -16.61784116
+    - -16.61673391
+    - -16.61458653
+    - -16.61155916
+    - -16.60763911
+    - -16.60264604
+    - -16.59677885
+    - -16.58989684
+    - -16.58198205
+    - -16.57322338
+    - -16.56354167
+    - -16.55291916
+    - -16.54147221
+    - -16.52942682
+    - -16.51659767
+    - -16.50335746
+    - -16.4895977
+    - -16.47535473
+    - -16.46083229
+    - -16.43046892
+shear_conf:
+    grids: 21
+    is_primitive: true
+    twinmode: 10-12
+shear_ratios:
+- 0.0
+- 0.05
+- 0.1
+- 0.15
+- 0.2
+- 0.25
+- 0.3
+- 0.35
+- 0.4
+- 0.45
+- 0.5
+- 0.55
+- 0.6
+- 0.65
+- 0.7
+- 0.75
+- 0.8
+- 0.85
+- 0.9
+- 0.95
+- 1.0
+strain: 0.17997884966233

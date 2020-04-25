@@ -44,8 +44,8 @@ label = "this is label"
 description = "this is description"
 dry_run = False
 is_phonon = True
-max_wallclock_seconds_relax = 10 * 3600
-max_wallclock_seconds_phonon = 10 * 3600
+max_wallclock_seconds_relax = 100 * 3600
+max_wallclock_seconds_phonon = 100 * 3600
 clean_workdir = False
 
 #----------------------

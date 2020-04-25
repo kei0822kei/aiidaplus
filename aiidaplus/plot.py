@@ -131,17 +131,17 @@ class BandPlot(PhonopyBandPlot):
 
 def _revise_band_labels(band_labels):
     for i, l in enumerate(band_labels):
-      if 'GAMMA' in l:
-          band_labels[i] = "$" + l.replace("GAMMA", r"\Gamma") + "$"
-      elif 'SIGMA' in l:
-          band_labels[i] = "$" + l.replace("SIGMA", r"\Sigma") + "$"
-      elif 'DELTA' in l:
-          band_labels[i] = "$" + l.replace("DELTA", r"\Delta") + "$"
-      elif 'LAMBDA' in l:
-          band_labels[i] = "$" + l.replace("LAMBDA", r"\Lambda") + "$"
-      else:
-          band_labels[i] = r"$\mathrm{%s}$" % l
-      return band_labels
+        if 'GAMMA' in l:
+            band_labels[i] = "$" + l.replace("GAMMA", r"\Gamma") + "$"
+        elif 'SIGMA' in l:
+            band_labels[i] = "$" + l.replace("SIGMA", r"\Sigma") + "$"
+        elif 'DELTA' in l:
+            band_labels[i] = "$" + l.replace("DELTA", r"\Delta") + "$"
+        elif 'LAMBDA' in l:
+            band_labels[i] = "$" + l.replace("LAMBDA", r"\Lambda") + "$"
+        else:
+            band_labels[i] = r"$\mathrm{%s}$" % l
+    return band_labels
 
 def _run_band_calc(phonon, band_labels, segment_qpoints, is_auto):
     if is_auto:
@@ -152,7 +152,7 @@ def _run_band_calc(phonon, band_labels, segment_qpoints, is_auto):
                                with_group_velocities=False,
                                npoints=101)
     else:
-        band_labels = _revise_band_labels(band_labels)
+        # labels = _revise_band_labels(band_labels)
         qpoints, connects = get_band_qpoints_and_path_connections(
                 segment_qpoints, npoints=101,
                 rec_lattice=np.linalg.inv(phonon.get_primitive().cell))
@@ -161,7 +161,7 @@ def _run_band_calc(phonon, band_labels, segment_qpoints, is_auto):
                                   with_group_velocities=False,
                                   is_band_connection=False,
                                   path_connections=connects,
-                                  band_labels=band_labels,
+                                  labels=band_labels,
                                   is_legacy_plot=False)
     return phonon
 
@@ -171,16 +171,17 @@ def band_plot(ax,
               segment_qpoints=None,
               is_auto=False,
               color='r'):
+    seg_qpoints = [segment_qpoints]  # not split band figure
     phonon = _run_band_calc(phonon=phonon,
                             band_labels=band_labels,
-                            segment_qpoints=segment_qpoints,
+                            segment_qpoints=seg_qpoints,
                             is_auto=is_auto)
-    band_labels = phonon.band_structure.labels
+    b_labels = phonon.band_structure.labels
     distances = phonon.band_structure.get_distances()
     frequencies = phonon.band_structure.get_frequencies()
     connections = phonon.band_structure.path_connections
     bp = BandPlot(ax,
-                  band_labels,
+                  b_labels,
                   distances,
                   frequencies,
                   connections)
@@ -197,32 +198,32 @@ def band_plots(ax,
         segment_lengths = []
         for ds in [distances, base_distances]:
             lengths = []
+            init = 0
             for d in ds:
-                init = 0
-                end = d[-1]
-                lengths.append(end - init)
-                init = end
+                lengths.append(d[-1]-init)
+                init = d[-1]
             segment_lengths.append(lengths)
-        ratios = np.array(segment_lengths[0]) / np.array(segment_lengths[1])
+        ratios = np.array(segment_lengths)[0] /  np.array(segment_lengths)[1]
         revised = []
-        end = 0
-        for i, d in enumerate(distances):
+        seg_start = 0
+        for i, distance in enumerate(distances):
             if i == 0:
-                revised.append(d / ratios[i] + end)
+                revised.append(distance / ratios[i])
             else:
-                revised.append((d-distances[i-1][-1]) / ratios[i] + end)
-            end = revised[-1][-1]
+                revised.append(seg_start+(distance-distances[i-1][-1]) / ratios[i])
+            seg_start = revised[-1][-1]
         return revised
 
+    seg_qpoints = [segment_qpoints]  # not split band figure
     for i, phonon in enumerate(phonons):
-        phonon = _run_band_calc(phonon=phonon,
-                                band_labels=band_labels,
-                                segment_qpoints=segment_qpoints,
-                                is_auto=is_auto)
-        band_labels = phonon.band_structure.labels
-        distances = phonon.band_structure.get_distances()
-        frequencies = phonon.band_structure.get_frequencies()
-        connections = phonon.band_structure.path_connections
+        ph = _run_band_calc(phonon=phonon,
+                            band_labels=band_labels,
+                            segment_qpoints=seg_qpoints,
+                            is_auto=is_auto)
+        band_labels = ph.band_structure.labels
+        distances = ph.band_structure.get_distances()
+        frequencies = ph.band_structure.get_frequencies()
+        connections = ph.band_structure.path_connections
         if i == 0:
             base_distances = deepcopy(distances)
             bp = BandPlot(ax,
@@ -240,4 +241,4 @@ def band_plots(ax,
                           frequencies,
                           connections,
                           xscale=xscale)
-            bp.plot_band(color=DEFAULT_COLORS[i])
+            bp.plot_band(color=DEFAULT_COLORS[i%len(DEFAULT_COLORS)])

@@ -40,7 +40,7 @@ def get_elements(pk):
 wf = 'phonopy.phonopy'
 code = 'phonopy'
 tot_num_mpiprocs = 16
-max_wallclock_seconds = 36000
+max_wallclock_seconds = 360000
 label = "this is label"
 description = "this is description"
 

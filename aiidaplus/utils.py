@@ -215,3 +215,36 @@ def get_kpoints(structure:Structure,
     kgrids['density'] = density
 
     return kgrids
+
+def get_qpoints_from_band_labels(pmgstructure, labels) -> np.array:
+    """
+    get qpoints from band labels
+
+    Args:
+        structure: pymatgen structure
+        labels (list): labels of band structure,
+                       if you have gamma, write as 'GAMMA'
+
+    Returns:
+        np.array: segment qpoints
+    """
+    import seekpath
+    structure = (pmgstructure.lattice.matrix,
+                 pmgstructure.frac_coords,
+                 [ specie.Z for specie in pmgstructure.species ])
+    labels_qpoints = seekpath.get_path(structure)['point_coords']
+    qpoints = []
+    for label in labels:
+        qpoints.append(labels_qpoints[label])
+    return np.array(qpoints)
+
+def get_default_labels_of_twinmode(twinmode) -> list:
+    """
+    get default labels of twinmode
+    """
+    if twinmode == '10-12':
+        labels = ['A', 'H', 'K', 'GAMMA', 'M', 'L', 'A']
+    else:
+        raise ValueError("twinmode: {} is currently not supported" % twinmode)
+    return labels
+
