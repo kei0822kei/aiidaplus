@@ -106,6 +106,30 @@ relax_settings = {
 
 incar_settings.update(relax_settings)
 
+parser_settings = {
+    'add_misc': True,
+    'add_kpoints': True,
+    'add_structure': True,
+    'add_energies': True,
+    'add_forces': True,
+    'add_stress': True,
+
+    ### before activate parameters below
+    ### always chech whether is works
+    ### detail see parser/vasp.py in aiida-vasp
+
+    # 'add_dynmat': True,
+    # 'add_hessian': True,
+    # 'add_poscar-structure': True,
+    # 'add_trajectory': True,
+    # 'add_bands': False,
+    # 'add_dos': False,
+    # 'add_projectors': True,
+    # 'add_born_charges': False,
+    # 'add_chgcar': False,
+    # 'add_wavecar': False,
+}
+
 #--------
 # kpoints
 #--------
@@ -177,6 +201,9 @@ def main(computer,
 
     # incar
     builder.parameters = Dict(dict=incar_settings)
+
+    # parser settings
+    builder.settings = Dict(dict={'parser_settings': parser_settings})
 
     # kpoints
     kpt = KpointsData()

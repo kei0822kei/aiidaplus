@@ -106,7 +106,7 @@ relax_conf = {
     'positions': True,
     'volume': True,
     'shape': True,
-    # 'algo': 'rd',  # you can also choose 'cg' (default)
+    'algo': 'rd',  # default: 'cg'
     'steps': 20,
     'convergence_absolute': False,
     'convergence_max_iterations': 2,
@@ -117,11 +117,30 @@ relax_conf = {
     'convergence_volume': 0.01,
     'force_cutoff': 0.001,  # or 'energy_cutoff': 1e-4,
     }
-relax_settings = {
+
+parser_settings = {
+    'add_misc': True,
+    'add_kpoints': True,
+    'add_structure': True,
     'add_energies': True,
     'add_forces': True,
     'add_stress': True,
-    }
+
+    ### before activate parameters below
+    ### always chech whether is works
+    ### detail see parser/vasp.py in aiida-vasp
+
+    # 'add_dynmat': True,
+    # 'add_hessian': True,
+    # 'add_poscar-structure': True,
+    # 'add_trajectory': True,
+    # 'add_bands': False,
+    # 'add_dos': False,
+    # 'add_projectors': True,
+    # 'add_born_charges': False,
+    # 'add_chgcar': False,
+    # 'add_wavecar': False,
+}
 
 #--------
 # kpoints
@@ -246,7 +265,9 @@ def main(computer,
         relax_attribute.energy_cutoff = \
                 Float(relax_conf['energy_cutoff'])
     builder.relax = relax_attribute
-    builder.settings = Dict(dict=relax_settings)
+
+    # parser settings
+    builder.settings = Dict(dict={'parser_settings': parser_settings})
 
     # kpoints
     kpt = KpointsData()
