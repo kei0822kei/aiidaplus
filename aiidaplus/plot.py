@@ -163,7 +163,7 @@ def _run_band_calc(phonon, band_labels, segment_qpoints, is_auto):
                                   path_connections=connects,
                                   labels=band_labels,
                                   is_legacy_plot=False)
-    return phonon
+    # return phonon
 
 def band_plot(ax,
               phonon,
@@ -172,10 +172,14 @@ def band_plot(ax,
               is_auto=False,
               color='r'):
     seg_qpoints = [segment_qpoints]  # not split band figure
-    phonon = _run_band_calc(phonon=phonon,
-                            band_labels=band_labels,
-                            segment_qpoints=seg_qpoints,
-                            is_auto=is_auto)
+    # phonon = _run_band_calc(phonon=phonon,
+    #                         band_labels=band_labels,
+    #                         segment_qpoints=seg_qpoints,
+    #                         is_auto=is_auto)
+    _run_band_calc(phonon=phonon,
+                   band_labels=band_labels,
+                   segment_qpoints=seg_qpoints,
+                   is_auto=is_auto)
     b_labels = phonon.band_structure.labels
     distances = phonon.band_structure.get_distances()
     frequencies = phonon.band_structure.get_frequencies()
@@ -214,16 +218,31 @@ def band_plots(ax,
             seg_start = revised[-1][-1]
         return revised
 
-    seg_qpoints = [segment_qpoints]  # not split band figure
     for i, phonon in enumerate(phonons):
-        ph = _run_band_calc(phonon=phonon,
-                            band_labels=band_labels,
-                            segment_qpoints=seg_qpoints,
-                            is_auto=is_auto)
-        band_labels = ph.band_structure.labels
-        distances = ph.band_structure.get_distances()
-        frequencies = ph.band_structure.get_frequencies()
-        connections = ph.band_structure.path_connections
+        if i == 0:
+            # ph = _run_band_calc(phonon=phonon,
+            #                     band_labels=band_labels,
+            #                     segment_qpoints=seg_qpoints,
+            #                     is_auto=is_auto)
+            _run_band_calc(phonon=phonon,
+                           band_labels=band_labels,
+                           segment_qpoints=[segment_qpoints],  # not split band figure
+                           is_auto=is_auto)
+            base_primitive_matrix = phonon.get_primitive_matrix()
+        else:
+            primitive_matrix = phonon.get_primitive_matrix()
+            fixed_segment_qpoints = \
+                    np.dot(primitive_matrix.T,
+                           np.dot(np.linalg.inv(base_primitive_matrix.T), segment_qpoints.T)).T
+            _run_band_calc(phonon=phonon,
+                           band_labels=band_labels,
+                           segment_qpoints=[fixed_segment_qpoints],
+                           is_auto=is_auto)
+
+        band_labels = phonon.band_structure.labels
+        distances = phonon.band_structure.get_distances()
+        frequencies = phonon.band_structure.get_frequencies()
+        connections = phonon.band_structure.path_connections
         if i == 0:
             base_distances = deepcopy(distances)
             bp = BandPlot(ax,

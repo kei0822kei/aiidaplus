@@ -1,0 +1,11 @@
+aiida-core: 20fa6c252912d8af04d9926f93a9197d3cc2b651
+aiida-phonopy: abd00fe9dea8ddc7ee4e525e1636e1d82566316b
+aiida-vasp: d089ed72ef3543d084d823a9345609a06fd271ba
+
+
+### memo
+change aiida-vasp/aiida_vasp/workchains/relax.py a little bit because of bug (?)
+comment out line 265
+
+# aiida-vasp
+lwave, lreal, lchrg is ignored which is very dangerous

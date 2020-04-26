@@ -46,7 +46,8 @@ description = "this is description"
 # structure
 #----------
 # structure_pk = 30347  # AgBr
-structure_pk = 4545  # for glass, Ne
+# structure_pk = 4545  # for glass, Ne
+structure_pk = 1250 # Ti_c, aiida
 elements = get_elements(structure_pk)
 
 #-------
@@ -85,15 +86,15 @@ incar_settings['encut'] = encut
 
 ### metal or not metal
 ##### metal
-# smearing_settings = {
-#     'ismear': 1,
-#     'sigma': 0.2
-#     }
-##### not metal
 smearing_settings = {
-    'ismear': 0,
-    'sigma': 0.01
+    'ismear': 1,
+    'sigma': 0.2
     }
+##### not metal
+# smearing_settings = {
+#     'ismear': 0,
+#     'sigma': 0.01
+#     }
 
 incar_settings.update(smearing_settings)
 
