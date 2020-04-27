@@ -40,6 +40,7 @@ wf = 'vasp.vasp'
 max_wallclock_seconds = 36000
 label = "this is label"
 description = "this is description"
+clean_workdir = True
 
 #----------
 # structure
@@ -175,7 +176,7 @@ def main(computer,
     workflow = WorkflowFactory(wf)
     builder = workflow.get_builder()
     builder.code = Code.get_from_string('{}@{}'.format('vasp544mpi', computer))
-    builder.clean_workdir = Bool(False)
+    builder.clean_workdir = Bool(clean_workdir)
     builder.verbose = Bool(True)
 
     # label and descriptions

@@ -41,6 +41,7 @@ wf = 'vasp.relax'
 max_wallclock_seconds = 36000
 label = "this is label"
 description = "this is description"
+clean_workdir = True
 
 #----------
 # structure
@@ -118,10 +119,10 @@ relax_conf = {
     'force_cutoff': 0.001,  # or 'energy_cutoff': 1e-4,
     }
 
+# 'add_structure': True is automatically set
 parser_settings = {
     'add_misc': True,
     'add_kpoints': True,
-    'add_structure': True,
     'add_energies': True,
     'add_forces': True,
     'add_stress': True,
@@ -189,7 +190,7 @@ def main(computer,
     workflow = WorkflowFactory(wf)
     builder = workflow.get_builder()
     builder.code = Code.get_from_string('{}@{}'.format('vasp544mpi', computer))
-    builder.clean_workdir = Bool(False)
+    builder.clean_workdir = Bool(clean_workdir)
     builder.verbose = Bool(True)
 
     # label and descriptions

@@ -130,18 +130,19 @@ class BandPlot(PhonopyBandPlot):
                 count += 1
 
 def _revise_band_labels(band_labels):
+    new = []
     for i, l in enumerate(band_labels):
         if 'GAMMA' in l:
-            band_labels[i] = "$" + l.replace("GAMMA", r"\Gamma") + "$"
+            new.append("$" + l.replace("GAMMA", r"\Gamma") + "$")
         elif 'SIGMA' in l:
-            band_labels[i] = "$" + l.replace("SIGMA", r"\Sigma") + "$"
+            new.append("$" + l.replace("SIGMA", r"\Sigma") + "$")
         elif 'DELTA' in l:
-            band_labels[i] = "$" + l.replace("DELTA", r"\Delta") + "$"
+            new.append("$" + l.replace("DELTA", r"\Delta") + "$")
         elif 'LAMBDA' in l:
-            band_labels[i] = "$" + l.replace("LAMBDA", r"\Lambda") + "$"
+            new.append("$" + l.replace("LAMBDA", r"\Lambda") + "$")
         else:
-            band_labels[i] = r"$\mathrm{%s}$" % l
-    return band_labels
+            new.append(r"$\mathrm{%s}$" % l)
+    return new
 
 def _run_band_calc(phonon, band_labels, segment_qpoints, is_auto):
     if is_auto:
@@ -152,7 +153,6 @@ def _run_band_calc(phonon, band_labels, segment_qpoints, is_auto):
                                with_group_velocities=False,
                                npoints=101)
     else:
-        # labels = _revise_band_labels(band_labels)
         qpoints, connects = get_band_qpoints_and_path_connections(
                 segment_qpoints, npoints=101,
                 rec_lattice=np.linalg.inv(phonon.get_primitive().cell))
@@ -240,6 +240,8 @@ def band_plots(ax,
                            is_auto=is_auto)
 
         band_labels = phonon.band_structure.labels
+        labels = _revise_band_labels(band_labels)
+        print(labels)
         distances = phonon.band_structure.get_distances()
         frequencies = phonon.band_structure.get_frequencies()
         connections = phonon.band_structure.path_connections

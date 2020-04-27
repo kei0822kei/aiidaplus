@@ -13,19 +13,19 @@ calculator_settings:
             lwave: false
             npar: 4
             prec: Accurate
-            sigma: 0.2
+            sigma: 0.4
         kpoints:
             mesh:
-            - 5
-            - 5
-            - 5
+            - 2
+            - 2
+            - 2
             offset:
             - 0
             - 0
             - 0.5
         options:
-            max_wallclock_seconds: 36000
-            queue_name: ''
+            max_wallclock_seconds: 360000
+            queue_name: vega-a
         phonon_conf:
             distance: 0.02
             mesh:
@@ -42,7 +42,7 @@ calculator_settings:
             Ti: Ti_pv
         vasp_code: vasp544mpi
     relax:
-        clean_workdir: false
+        clean_workdir: true
         incar_settings:
             addgrid: true
             ediff: 1.0e-08
@@ -56,23 +56,30 @@ calculator_settings:
             lwave: false
             npar: 4
             prec: Accurate
-            sigma: 0.2
+            sigma: 0.4
         kpoints:
             mesh:
-            - 20
-            - 20
-            - 15
+            - 8
+            - 8
+            - 6
             offset:
             - 0
             - 0
             - 0.5
         options:
-            max_wallclock_seconds: 36000
-            queue_name: ''
+            max_wallclock_seconds: 360000
+            queue_name: vega-a
+        parser_settings:
+            add_energies: true
+            add_forces: true
+            add_kpoints: true
+            add_misc: true
+            add_stress: true
         potential_family: PBE.54
         potential_mapping:
             Ti: Ti_pv
         relax_conf:
+            algo: rd
             convergence_absolute: false
             convergence_max_iterations: 10
             convergence_on: true
@@ -86,126 +93,86 @@ parent:
     hall_number: 488
     international: P6_3/mmc
     lattice:
-    -   - 1.44726896
-        - -2.50674337
+    -   - 1.44676428
+        - -2.50586924
         - 0.0
-    -   - 1.44726896
-        - 2.50674337
+    -   - 1.44676428
+        - 2.50586924
         - 0.0
     -   - 0.0
         - 0.0
-        - 4.58154364
+        - 4.58098687
     lattice_abc:
-    - 2.8945379191882146
-    - 2.8945379191882146
-    - 4.58154364
+    - 2.8935285604020042
+    - 2.8935285604020042
+    - 4.58098687
     lattice_angles:
     - 90.0
     - 90.0
-    - 119.9999999814453
+    - 120.0000000091917
     natoms: 2
-    pk: 12322
+    pk: 19730
     pointgroup: 6/mmm
     site_symmetry_symbols:
     - -6m2
     - -6m2
     symprec: 1.0e-05
-    volume: 33.24305637149892
+    volume: 33.21583889928421
     wyckoffs:
     - c
     - c
 phonon_pks:
-- 13723
-- 13730
-- 13738
-- 13753
-- 13773
-- 13801
-- 13838
-- 13880
-- 13917
-- 13951
-- 13982
-- 14005
-- 14021
-- 14046
-- 14076
-- 14104
-- 14130
-- 14159
-- 14193
-- 14217
-- 14241
-pk: 12318
+- 21036
+- 21043
+- 21050
+- 21057
+- 21064
+- 21071
+- 21078
+- 21085
+- 21092
+- 21099
+- 21106
+pk: 19726
 relax_pks:
-- 12367
-- 12394
-- 12422
-- 12453
-- 12484
-- 12513
-- 12543
-- 12572
-- 12601
-- 12629
-- 12659
-- 12687
-- 12717
-- 12746
-- 12775
-- 12806
-- 12837
-- 12863
-- 12893
-- 12919
-- 12949
+- 19765
+- 19790
+- 19815
+- 19846
+- 19871
+- 19896
+- 19921
+- 19946
+- 19971
+- 19996
+- 20021
 relax_results:
     energies:
-    - -16.6188262
-    - -16.6183271
-    - -16.61682996
-    - -16.61471403
-    - -16.61148301
-    - -16.60624978
-    - -16.60211253
-    - -16.59599633
-    - -16.58887812
-    - -16.58082246
-    - -16.57181564
-    - -16.56197935
-    - -16.55130864
-    - -16.53983506
-    - -16.52768493
-    - -16.5149278
-    - -16.50159954
-    - -16.48782284
-    - -16.47363576
-    - -16.45923719
-    - -16.43032516
+    - -16.61830936
+    - -16.616734
+    - -16.61155963
+    - -16.60264785
+    - -16.58990112
+    - -16.57323169
+    - -16.55293089
+    - -16.52944261
+    - -16.50335024
+    - -16.47536298
+    - -16.44614177
 shear_conf:
-    grids: 21
+    grids: 11
     is_primitive: true
     twinmode: 10-12
 shear_ratios:
 - 0.0
-- 0.05
 - 0.1
-- 0.15
 - 0.2
-- 0.25
 - 0.3
-- 0.35
 - 0.4
-- 0.45
 - 0.5
-- 0.55
 - 0.6
-- 0.65
 - 0.7
-- 0.75
 - 0.8
-- 0.85
 - 0.9
-- 0.95
 - 1.0
-strain: 0.18043517167635
+strain: 0.17997884966233

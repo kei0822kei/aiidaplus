@@ -46,7 +46,7 @@ dry_run = False
 is_phonon = True
 max_wallclock_seconds_relax = 100 * 3600
 max_wallclock_seconds_phonon = 100 * 3600
-clean_workdir = False
+clean_workdir = True
 
 #----------------------
 # twinpy shear settings
@@ -54,7 +54,7 @@ clean_workdir = False
 shear_conf = {
         'twinmode': '10-12',
         # 'grids': 2,
-        'grids': 7,
+        'grids': 5,
         # 'structure_type': 'primitive'  # or 'conventional' or ''
         'is_primitive': True,  # or 'conventional' or ''
         # 'structure_type': 'conventional'  # or 'conventional' or ''
@@ -130,16 +130,40 @@ phonon_conf = {
 #---------------
 # volume and shape relaxation is False by default
 relax_conf = {
-    # 'algo': 'cg',  # v1.0.1 cannot set 'rd'
+    'algo': 'rd',  # default 'cg'
     'steps': 40,
     'convergence_absolute': False,
-    # 'convergence_max_iterations': 3,
-    'convergence_max_iterations': 10,
+    'convergence_max_iterations': 3,
+    # 'convergence_max_iterations': 10,
     'convergence_on': True,
     'convergence_positions': 0.01,
     # 'force_cutoff': 0.0001,
     'force_cutoff': 0.01,
     }
+
+# 'add_structure': True is automatically set
+parser_settings = {
+    'add_misc': True,
+    'add_kpoints': True,
+    'add_energies': True,
+    'add_forces': True,
+    'add_stress': True,
+
+    ### before activate parameters below
+    ### always chech whether is works
+    ### detail see parser/vasp.py in aiida-vasp
+
+    # 'add_dynmat': True,
+    # 'add_hessian': True,
+    # 'add_poscar-structure': True,
+    # 'add_trajectory': True,
+    # 'add_bands': False,
+    # 'add_dos': False,
+    # 'add_projectors': True,
+    # 'add_born_charges': False,
+    # 'add_chgcar': False,
+    # 'add_wavecar': False,
+}
 
 #--------
 # kpoints
@@ -237,6 +261,7 @@ def main(computer,
                     'max_wallclock_seconds': max_wallclock_seconds_relax},
         'relax_conf': relax_conf,
         'clean_workdir': clean_workdir,
+        'parser_settings': parser_settings,
         })
     phonon_settings = deepcopy(base_settings)
     phonon_settings.update({
