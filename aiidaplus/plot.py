@@ -12,54 +12,34 @@ from copy import deepcopy
 from matplotlib import pyplot as plt
 from phonopy.phonon.band_structure import BandPlot as PhonopyBandPlot
 from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 
-# DEFAULT_COLORS = plt.rcParams['axes.prop_cycle'].by_key()['color']
 DEFAULT_COLORS = ['r', 'b', 'm', 'y', 'g', 'c']
 DEFAULT_MARKERS = ['o', 'v', ',', '^', 'h', 'D', '<', '*', '>', 'd']
 
+def decorate_string_for_latex(string):
+    """
+    decorate strings for latex
+    """
+    if string == 'GAMMA':
+        decorated_string = "$" + string.replace("GAMMA", r"\Gamma") + "$"
+    elif string == 'SIGMA':
+        decorated_string = "$" + string.replace("SIGMA", r"\Sigma") + "$"
+    elif string == 'DELTA':
+        decorated_string = "$" + string.replace("DELTA", r"\Delta") + "$"
+    elif string == 'LAMBDA':
+        decorated_string = "$" + string.replace("LAMBDA", r"\Lambda") + "$"
+    else:
+        decorated_string = r"$\mathrm{%s}$" % string
+    return decorated_string
 
 def line_chart(ax, xdata, ydata, xlabel, ylabel, label=None, **kwargs):
     """
     plot line chart in ax
 
-    Args:
-        ax : matplotlib.axes._subplots.AxesSubplot
-            ax made from 'fig.subplot(xxx)'
-        xdata : list
-            x data
-        ydata : list
-            y data
-        xlabel : str
-            x label
-        ylabel : str
-            y label
-        kwargs: c, marker, facecolor
-
-    Returns:
-        dict: description
-
-    Raises:
-        ValueError: description
-
-    Examples:
-        description
-
-        >>> print_test ("test", "message")
-          test message
-
     Note:
-        description
-        Parameters
-        ----------
-
-        Returns
-        -------
-        ax : matplotlib.axes._subplots.AxesSubplot
-            plotted ax
-
-        Notes
-        -----
+        kwargs: c, marker, facecolor
     """
     if 'c' in kwargs.keys():
         c = kwargs['c']
@@ -99,106 +79,35 @@ def line_chart_group(ax, xdata, ydata, xlabel, ylabel, gdata, glabel, **kwargs):
     ax.legend()
 
 
-class BandPlot(PhonopyBandPlot):
+class BandsPlot(PhonopyBandPlot):
 
-    def __init__(self, ax, band_labels, distances, frequencies, connections, xscale=None):
-        super().__init__(axs=[ax])
-        self.band_labels = band_labels
-        self.distances = distances
-        self.frequencies = frequencies
-        self.connections = connections
-        self.ax = ax
-        if xscale is None:
-            self.set_xscale_from_data(self.frequencies, self.distances)
-        else:
-            self.xscale = xscale
-        self.decorate(self.band_labels,
-                      self.connections,
-                      self.frequencies,
-                      self.distances)
+    def __init__(self,
+                 fig,
+                 phonons,
+                 band_labels=None,
+                 segment_qpoints=None,
+                 is_auto=False,
+                 xscale=20,
+                 npoints=51):
+        """
+        band plot
+        """
+        self.fig = fig
+        self.phonons = deepcopy(phonons)
+        self.band_labels = None
+        self.connections = None
+        self.axes = None
+        self.npoints = npoints
+        self._run_band(band_labels,
+                       segment_qpoints,
+                       is_auto,
+                       self.npoints)
+        self._set_axs()
+        super().__init__(axs=self.axs)
+        self.xscale = xscale
+        self._set_frame()
 
-    def plot_band(self, color='r'):
-        c_num = len(self.ax.get_lines()) % len(DEFAULT_COLORS)
-        count = 0
-        distances_scaled = [d * self.xscale for d in self.distances]
-        for d, f, c in zip(distances_scaled,
-                           self.frequencies,
-                           self.connections):
-            self.ax.plot(d, f, color=color, linewidth=1)
-            self.ax.axvline(d[-1], color='k', linestyle='dashed', linewidth=0.5)
-            if not c:
-                count += 1
-
-def _revise_band_labels(band_labels):
-    new = []
-    for i, l in enumerate(band_labels):
-        if 'GAMMA' in l:
-            new.append("$" + l.replace("GAMMA", r"\Gamma") + "$")
-        elif 'SIGMA' in l:
-            new.append("$" + l.replace("SIGMA", r"\Sigma") + "$")
-        elif 'DELTA' in l:
-            new.append("$" + l.replace("DELTA", r"\Delta") + "$")
-        elif 'LAMBDA' in l:
-            new.append("$" + l.replace("LAMBDA", r"\Lambda") + "$")
-        else:
-            new.append(r"$\mathrm{%s}$" % l)
-    return new
-
-def _run_band_calc(phonon, band_labels, segment_qpoints, is_auto):
-    if is_auto:
-        print("# band path is set automalically")
-        phonon.auto_band_structure(plot=False,
-                               write_yaml=False,
-                               with_eigenvectors=False,
-                               with_group_velocities=False,
-                               npoints=101)
-    else:
-        qpoints, connects = get_band_qpoints_and_path_connections(
-                segment_qpoints, npoints=101,
-                rec_lattice=np.linalg.inv(phonon.get_primitive().cell))
-        phonon.run_band_structure(paths=qpoints,
-                                  with_eigenvectors=False,
-                                  with_group_velocities=False,
-                                  is_band_connection=False,
-                                  path_connections=connects,
-                                  labels=band_labels,
-                                  is_legacy_plot=False)
-    # return phonon
-
-def band_plot(ax,
-              phonon,
-              band_labels=None,
-              segment_qpoints=None,
-              is_auto=False,
-              color='r'):
-    seg_qpoints = [segment_qpoints]  # not split band figure
-    # phonon = _run_band_calc(phonon=phonon,
-    #                         band_labels=band_labels,
-    #                         segment_qpoints=seg_qpoints,
-    #                         is_auto=is_auto)
-    _run_band_calc(phonon=phonon,
-                   band_labels=band_labels,
-                   segment_qpoints=seg_qpoints,
-                   is_auto=is_auto)
-    b_labels = phonon.band_structure.labels
-    distances = phonon.band_structure.get_distances()
-    frequencies = phonon.band_structure.get_frequencies()
-    connections = phonon.band_structure.path_connections
-    bp = BandPlot(ax,
-                  b_labels,
-                  distances,
-                  frequencies,
-                  connections)
-    bp.plot_band(color=color)
-
-def band_plots(ax,
-              phonons,
-              band_labels=None,
-              segment_qpoints=None,
-              is_auto=False,
-              color=None):
-
-    def _revise_distances(distances, base_distances):
+    def _revise_distances(self, distances, base_distances):
         segment_lengths = []
         for ds in [distances, base_distances]:
             lengths = []
@@ -218,48 +127,207 @@ def band_plots(ax,
             seg_start = revised[-1][-1]
         return revised
 
-    for i, phonon in enumerate(phonons):
-        if i == 0:
-            # ph = _run_band_calc(phonon=phonon,
-            #                     band_labels=band_labels,
-            #                     segment_qpoints=seg_qpoints,
-            #                     is_auto=is_auto)
-            _run_band_calc(phonon=phonon,
-                           band_labels=band_labels,
-                           segment_qpoints=[segment_qpoints],  # not split band figure
-                           is_auto=is_auto)
-            base_primitive_matrix = phonon.get_primitive_matrix()
-        else:
-            primitive_matrix = phonon.get_primitive_matrix()
-            fixed_segment_qpoints = \
-                    np.dot(primitive_matrix.T,
-                           np.dot(np.linalg.inv(base_primitive_matrix.T), segment_qpoints.T)).T
-            _run_band_calc(phonon=phonon,
-                           band_labels=band_labels,
-                           segment_qpoints=[fixed_segment_qpoints],
-                           is_auto=is_auto)
+    def _set_axs(self):
+        n = len([x for x in self.phonons[0].band_structure.path_connections if not x])
+        self.axs = ImageGrid(self.fig, 111,  # similar to subplot(111)
+                             nrows_ncols=(1, n),
+                             axes_pad=0.11,
+                             add_all=True,
+                             label_mode="L")
 
-        band_labels = phonon.band_structure.labels
-        labels = _revise_band_labels(band_labels)
-        print(labels)
-        distances = phonon.band_structure.get_distances()
-        frequencies = phonon.band_structure.get_frequencies()
-        connections = phonon.band_structure.path_connections
-        if i == 0:
-            base_distances = deepcopy(distances)
-            bp = BandPlot(ax,
-                          band_labels,
-                          distances,
-                          frequencies,
-                          connections)
-            bp.plot_band(color=DEFAULT_COLORS[i])
-            xscale = bp.xscale
+    def _set_frame(self):
+        self.decorate(self.band_labels,
+                      self.connections,
+                      self.phonons[0].band_structure.get_frequencies(),
+                      self.phonons[0].band_structure.get_distances())
+
+    def _run_band(self,
+                  band_labels,
+                  segment_qpoints,
+                  is_auto,
+                  npoints):
+        for i, phonon in enumerate(self.phonons):
+            if i == 0:
+                run_band_calc(phonon=phonon,
+                              band_labels=band_labels,
+                              segment_qpoints=segment_qpoints,
+                              is_auto=is_auto,
+                              npoints=npoints)
+                base_primitive_matrix = phonon.get_primitive_matrix()
+                qpt = phonon.band_structure.qpoints
+                con = phonon.band_structure.path_connections
+                segment_qpoints = []
+                l = []
+                for i in range(len(qpt)):
+                    if con[i]:
+                        l.append(qpt[i][0])
+                    else:
+                        l.extend([qpt[i][0], qpt[i][-1]])
+                        segment_qpoints.append(np.array(l))
+                        l = []
+                self.segment_qpoints = segment_qpoints
+
+            else:
+                primitive_matrix = phonon.get_primitive_matrix()
+                fixed_segment_qpoints = []
+                for segment in self.segment_qpoints:
+                    fixed_segment = \
+                            np.dot(primitive_matrix.T,
+                                   np.dot(np.linalg.inv(base_primitive_matrix.T),
+                                          segment.T)).T
+                    fixed_segment_qpoints.append(fixed_segment)
+                fixed_segment_qpoints = np.array(fixed_segment_qpoints)
+                run_band_calc(phonon=phonon,
+                              band_labels=self.phonons[0].band_structure.labels,
+                              segment_qpoints=fixed_segment_qpoints,
+                              is_auto=False,
+                              npoints=npoints)
+
+        if is_auto:
+            self.band_labels = self.phonons[0].band_structure.labels
         else:
-            distances = _revise_distances(distances, base_distances)
-            bp = BandPlot(ax,
-                          band_labels,
-                          distances,
-                          frequencies,
-                          connections,
-                          xscale=xscale)
-            bp.plot_band(color=DEFAULT_COLORS[i%len(DEFAULT_COLORS)])
+            self.band_labels = [ decorate_string_for_latex(label) for label in band_labels ]
+        self.connections = self.phonons[0].band_structure.path_connections
+
+    def plot_bands(self, **kwargs):
+        """
+        plot band, **kwargs is passed for plotting with matplotlib
+
+        Note:
+            currently suppored **kwargs
+            - 'cs'
+            - 'alphas'
+            - 'linestyles'
+            - 'linewidths'
+        """
+        def _plot(distances, frequencies, connections, is_decorate,
+                  c, alpha, linestyle, linewidth):
+            count = 0
+            distances_scaled = [d * self.xscale for d in distances]
+            for d, f, cn in zip(distances_scaled,
+                                frequencies,
+                                connections):
+                ax = self.axs[count]
+                ax.plot(d, f, c=c, alpha=alpha, linestyle=linestyle,
+                             linewidth=linewidth)
+                if is_decorate:
+                    ax.axvline(d[-1], c='k', linestyle='dotted', linewidth=0.5)
+                if not cn:
+                    count += 1
+
+        num = len(self.phonons)
+        if 'cs' in kwargs.keys():
+            assert len(kwargs['cs']) == num
+            cs = kwargs['cs']
+        else:
+            cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(num) ]
+        if 'alphas' in kwargs.keys():
+            assert len(kwargs['alphas']) == num
+            alphas = kwargs['alphas']
+        else:
+            alphas = [1] * num
+        if 'linestyles' in kwargs.keys():
+            assert len(kwargs['linestyles']) == num
+            linestyles = kwargs['linestyles']
+        else:
+            linestyles = ['solid'] * num
+        if 'linewidths' in kwargs.keys():
+            assert len(kwargs['linewidths']) == num
+            linewidths = kwargs['linewidths']
+        else:
+            linewidths = [1] * num
+
+        for i, phonon in enumerate(self.phonons):
+            distances = phonon.band_structure.get_distances()
+            frequencies = phonon.band_structure.get_frequencies()
+            if i == 0:
+                _plot(distances, frequencies, self.connections, is_decorate=True,
+                      c=cs[i], alpha=alphas[i], linestyle=linestyles[i], linewidth=linewidths[i])
+                base_distances = deepcopy(distances)
+            else:
+                distances = self._revise_distances(distances, base_distances)
+                _plot(distances, frequencies, self.connections, is_decorate=False,
+                      c=cs[i], alpha=alphas[i], linestyle=linestyles[i], linewidth=linewidths[i])
+
+def run_band_calc(phonon,
+                  band_labels=None,
+                  segment_qpoints=None,
+                  is_auto=False,
+                  npoints=51):
+    if is_auto:
+        print("# band path is set automalically")
+        phonon.auto_band_structure(plot=False,
+                               write_yaml=False,
+                               with_eigenvectors=False,
+                               with_group_velocities=False,
+                               npoints=npoints)
+    else:
+        qpoints, path_connections = get_band_qpoints_and_path_connections(
+                segment_qpoints, npoints=npoints,
+                rec_lattice=np.linalg.inv(phonon.get_primitive().cell))
+        phonon.run_band_structure(paths=qpoints,
+                                  with_eigenvectors=False,
+                                  with_group_velocities=False,
+                                  is_band_connection=False,
+                                  path_connections=path_connections,
+                                  labels=band_labels,
+                                  is_legacy_plot=False)
+
+def band_plot(fig,
+              phonon,
+              band_labels=None,
+              segment_qpoints=None,
+              is_auto=False,
+              c=None,
+              **kwargs):
+    bands_plot(fig, [phonon],
+               band_labels=band_labels,
+               segment_qpoints=segment_qpoints,
+               is_auto=is_auto,
+               xscale=20,
+               c=None,
+               is_trajectory=False)
+
+def bands_plot(fig,
+               phonons,
+               band_labels=None,
+               segment_qpoints=None,
+               is_auto=False,
+               is_trajectory=False,
+               xscale=20,
+               c=None,
+               **kwargs):
+    bp = BandsPlot(fig,
+                   phonons,
+                   band_labels=band_labels,
+                   segment_qpoints=segment_qpoints,
+                   is_auto=is_auto,
+                   xscale=xscale,
+                   npoints=51)
+    if is_trajectory:
+        alphas = [ 1. ]
+        linewidths = [ 1.5 ]
+        linestyles = [ 'dashed' ]
+        alphas.extend([ 0.3 for _ in range(len(phonons)-2) ])
+        linewidths.extend([ 1. for _ in range(len(phonons)-2) ])
+        linestyles.extend([ 'dotted' for _ in range(len(phonons)-2) ])
+        alphas.append(1.)
+        linewidths.append(1.5)
+        linestyles.append('solid')
+        if c is None:
+            c = 'r'
+        cs = [ c for _ in range(len(phonons)) ]
+    else:
+        if 'alpahas' not in kwargs:
+            alphas = [ 1. ] * len(phonons)
+        if 'cs' not in kwargs:
+            cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(len(phonons)) ]
+        if 'linestyles' not in kwargs:
+            linestyles = [ 'solid' ] * len(phonons)
+        if 'linewidths' not in kwargs:
+            linewidths = [ 1. ] * len(phonons)
+
+    bp.plot_bands(cs=cs,
+                  alphas=alphas,
+                  linestyles=linestyles,
+                  linewidths=linewidths)
