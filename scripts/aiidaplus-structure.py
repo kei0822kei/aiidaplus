@@ -34,16 +34,16 @@ def get_argparse():
         help="import structure to aiida database")
     parser.add_argument('--group', type=str, default=None,
         help="if not None, add structure to specified group")
-    parser.add_argument('--standardize', action='store_true',
-        help="if True, standardize structure")
+    parser.add_argument('--conventional', action='store_true',
+        help="if True, get conventinoal structure")
     parser.add_argument('--primitive', action='store_true',
-        help="if True, find primitive strucutre")
+        help="if True, get primitive strucutre")
     parser.add_argument('--show', action='store_true',
         help="get description about structure")
     args = parser.parse_args()
     return args
 
-def get_pmgstructure(filename, filetype, primitive):
+def get_pmgstructure(filename, filetype):
     """
     get pymatgen structure object
 
@@ -54,8 +54,6 @@ def get_pmgstructure(filename, filetype, primitive):
         filetype : str
             file type of 'filename'
             currently supported 'cif' or 'poscar'
-        primitive : bool
-            if True, return primitive structure
 
         Notes
         -----
@@ -82,7 +80,7 @@ def get_pmgstructure(filename, filetype, primitive):
         cif = pmgcif.CifParser(filename,
                                occupancy_tolerance=occupancy_tolerance,
                                site_tolerance=site_tolerance)
-        pmgstruct = cif.get_structures(primitive=primitive)[0]
+        pmgstruct = cif.get_structures()[0]
     elif filetype == 'poscar':
         from pymatgen.io.vasp import inputs as pmginputs
         poscar = pmginputs.Poscar.from_file(filename)
@@ -128,14 +126,16 @@ def import_to_aiida(pmgstruct, label, group=None):
         print("structure {0} has added to group '{1}'".format(
             structure.pk, group))
 
-def standardize_structure(pmgstruct, primitive=False):
+def standardize_structure(pmgstruct, primitive, conventional):
     struct_analyzer = SpacegroupAnalyzer(pmgstruct)
     if primitive:
         print("primitive standardizing structure\n")
         structure = struct_analyzer.get_primitive_standard_structure()
-    else:
+    elif conventional:
         print("conventional standardizing structure\n")
         structure = struct_analyzer.get_conventional_standard_structure()
+    else:
+        raise ValueError("some unexpected error occured, check code!")
     return structure
 
 @with_dbenv()
@@ -147,14 +147,14 @@ def main(filename,
          get_poscar,
          add_db,
          group,
-         standardize,
+         conventional,
          primitive,
          show,
          label):
 
-    pmgstruct = get_pmgstructure(filename, filetype, primitive)
-    if standardize:
-        pmgstruct = standardize_structure(pmgstruct, primitive)
+    pmgstruct = get_pmgstructure(filename, filetype)
+    if primitive or conventional:
+        pmgstruct = standardize_structure(pmgstruct, primitive, conventional)
     if show:
         get_description(pmgstruct)
     if get_cif:
@@ -170,6 +170,9 @@ def main(filename,
 
 if __name__ == '__main__':
     args = get_argparse()
+    if args.primitive and args.conventional:
+        raise ValueError("both primitive and conventional activated")
+
     main(filename=args.filename,
          filetype=args.filetype,
          get_cif=args.get_cif,
@@ -178,7 +181,7 @@ if __name__ == '__main__':
          get_poscar=args.get_poscar,
          add_db=args.add_db,
          group=args.group,
-         standardize=args.standardize,
+         conventional=args.conventional,
          primitive=args.primitive,
          show=args.show,
          label=args.label)
