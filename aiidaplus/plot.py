@@ -296,6 +296,7 @@ def bands_plot(fig,
                is_trajectory=False,
                xscale=20,
                c=None,
+               npoints=51,
                **kwargs):
     bp = BandsPlot(fig,
                    phonons,
@@ -303,7 +304,7 @@ def bands_plot(fig,
                    segment_qpoints=segment_qpoints,
                    is_auto=is_auto,
                    xscale=xscale,
-                   npoints=51)
+                   npoints=npoints)
     if is_trajectory:
         alphas = [ 1. ]
         linewidths = [ 1.5 ]

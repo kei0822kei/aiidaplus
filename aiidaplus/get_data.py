@@ -159,7 +159,7 @@ def get_relax_data(pk, symprec=1e-5) -> dict:
     dic['data_type'] = node.process_class.get_name()
     dic['pk'] = pk
     dic['initial_structure_pk'] = node.inputs.structure.pk
-    dic['final_structure_pk'] = node.outputs.structure.pk
+    dic['final_structure_pk'] = node.outputs.relax__structure.pk
     dic['final_energy_no_entropy'] = \
         node.outputs.misc.get_dict()['total_energies']['energy_no_entropy']
     dic['steps'] = vasp_results

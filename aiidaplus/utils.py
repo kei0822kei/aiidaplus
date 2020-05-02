@@ -242,9 +242,10 @@ def get_default_labels_of_twinmode(twinmode) -> list:
     """
     get default labels of twinmode
     """
-    if twinmode == '10-12':
-        labels = ['A', 'H', 'K', 'GAMMA', 'M', 'L', 'A']
-    else:
-        raise ValueError("twinmode: {} is currently not supported" % twinmode)
+    # if twinmode == '10-12':
+    #     labels = ['A', 'H', 'K', 'GAMMA', 'M', 'L', 'A']
+    # else:
+    #     raise ValueError("twinmode: {} is currently not supported" % twinmode)
+    labels = ['A', 'H', 'K', 'GAMMA', 'M', 'L', 'A']
     return labels
 

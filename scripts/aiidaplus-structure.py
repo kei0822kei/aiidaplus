@@ -40,10 +40,12 @@ def get_argparse():
         help="if True, get primitive strucutre")
     parser.add_argument('--show', action='store_true',
         help="get description about structure")
+    parser.add_argument('--symprec', type=float, default=1e-5,
+        help="symprec")
     args = parser.parse_args()
     return args
 
-def get_pmgstructure(filename, filetype):
+def get_pmgstructure(filename, filetype, symprec):
     """
     get pymatgen structure object
 
@@ -73,13 +75,12 @@ def get_pmgstructure(filename, filetype):
             specified filetype is not supported
     """
     occupancy_tolerance = 1.
-    site_tolerance = 1e-5
 
     if filetype == 'cif':
         from pymatgen.io import cif as pmgcif
         cif = pmgcif.CifParser(filename,
                                occupancy_tolerance=occupancy_tolerance,
-                               site_tolerance=site_tolerance)
+                               site_tolerance=symprec)
         pmgstruct = cif.get_structures()[0]
     elif filetype == 'poscar':
         from pymatgen.io.vasp import inputs as pmginputs
@@ -102,9 +103,9 @@ def export_structure(pmgstruct, filetype):
                }
     pmgstruct.to(fmt=filetype, filename=structure_filename[filetype])
 
-def get_description(pmgstruct):
+def get_description(pmgstruct, symprec):
     from pymatgen.io import vasp as pmgvasp
-    data = get_structure_data_from_pymatgen(pmgstruct)
+    data = get_structure_data_from_pymatgen(pmgstruct, symprec=symprec)
     for key in data:
         print(key+':')
         pprint(data[key])
@@ -126,8 +127,8 @@ def import_to_aiida(pmgstruct, label, group=None):
         print("structure {0} has added to group '{1}'".format(
             structure.pk, group))
 
-def standardize_structure(pmgstruct, primitive, conventional):
-    struct_analyzer = SpacegroupAnalyzer(pmgstruct)
+def standardize_structure(pmgstruct, primitive, conventional, symprec):
+    struct_analyzer = SpacegroupAnalyzer(pmgstruct, symprec=symprec)
     if primitive:
         print("primitive standardizing structure\n")
         structure = struct_analyzer.get_primitive_standard_structure()
@@ -150,13 +151,14 @@ def main(filename,
          conventional,
          primitive,
          show,
-         label):
+         label,
+         symprec):
 
-    pmgstruct = get_pmgstructure(filename, filetype)
+    pmgstruct = get_pmgstructure(filename, filetype, symprec)
     if primitive or conventional:
-        pmgstruct = standardize_structure(pmgstruct, primitive, conventional)
+        pmgstruct = standardize_structure(pmgstruct, primitive, conventional, symprec)
     if show:
-        get_description(pmgstruct)
+        get_description(pmgstruct, symprec)
     if get_cif:
         export_structure(pmgstruct, 'cif')
     if get_cssr:
@@ -184,4 +186,5 @@ if __name__ == '__main__':
          conventional=args.conventional,
          primitive=args.primitive,
          show=args.show,
-         label=args.label)
+         label=args.label,
+         symprec=args.symprec)

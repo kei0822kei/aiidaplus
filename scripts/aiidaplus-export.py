@@ -20,7 +20,6 @@ from aiidaplus.get_data import (get_structure_data,
                                 get_shear_data)
 from aiidaplus.utils import get_kpoints
 from aiidaplus import plot as aiidaplot
-from pprint import pprint
 
 RELAX_WF = WorkflowFactory('vasp.relax')
 
