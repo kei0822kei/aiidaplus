@@ -42,10 +42,9 @@ def get_elements(pk):
 wf = 'twinpy.twinboundary'
 label = "this is label"
 description = "this is description"
-# dry_run = False
-dry_run = True
-is_phonon = True
-max_wallclock_seconds_relax = 100 * 3600
+dry_run = False
+is_phonon = False
+max_wallclock_seconds_vasp = 10 * 3600
 max_wallclock_seconds_phonon = 100 * 3600
 clean_workdir = True
 
@@ -96,7 +95,6 @@ incar_settings = {
     'lreal': False,
     'lwave': False,
     'npar': 4,
-    'kpar': 2,
     'prec': 'Accurate',
     }
 
@@ -126,24 +124,6 @@ phonon_conf = {
     'symmetry_tolerance': 1e-5
     }
 
-
-
-#---------------
-# relax_settings
-#---------------
-# volume and shape relaxation is False by default
-relax_conf = {
-    'algo': 'rd',  # default 'cg'
-    'steps': 40,
-    'convergence_absolute': False,
-    'convergence_max_iterations': 3,
-    # 'convergence_max_iterations': 10,
-    'convergence_on': True,
-    'convergence_positions': 0.01,
-    # 'force_cutoff': 0.0001,
-    'force_cutoff': 0.01,
-    }
-
 # 'add_structure': True is automatically set
 parser_settings = {
     'add_misc': True,
@@ -167,6 +147,7 @@ parser_settings = {
     # 'add_chgcar': False,
     # 'add_wavecar': False,
 }
+
 
 #--------
 # kpoints
@@ -242,7 +223,7 @@ def main(computer,
     hexagonal.set_is_primitive(twinboundary_conf['is_primitive'])
     hexagonal.run()
     pmgparent = hexagonal.get_pymatgen_structure()
-    kpoints_relax = get_kpoints(structure=pmgparent,
+    kpoints_vasp = get_kpoints(structure=pmgparent,
                                 mesh=kpoints['mesh'],
                                 kdensity=kpoints['kdensity'],
                                 offset=kpoints['offset'])
@@ -258,12 +239,11 @@ def main(computer,
             'potential_family': potential_family,
             'potential_mapping': potential_mapping,
             }
-    relax_settings = deepcopy(base_settings)
-    relax_settings.update({
-        'kpoints': {'mesh': kpoints_relax['mesh'], 'offset': kpoints_relax['offset']},
+    vasp_settings = deepcopy(base_settings)
+    vasp_settings.update({
+        'kpoints': {'mesh': kpoints_vasp['mesh'], 'offset': kpoints_vasp['offset']},
         'options': {'queue_name': queue,
-                    'max_wallclock_seconds': max_wallclock_seconds_relax},
-        'relax_conf': relax_conf,
+                    'max_wallclock_seconds': max_wallclock_seconds_vasp},
         'clean_workdir': clean_workdir,
         'parser_settings': parser_settings,
         })
@@ -274,7 +254,7 @@ def main(computer,
                     'max_wallclock_seconds': max_wallclock_seconds_phonon},
         'phonon_conf': phonon_conf,
         })
-    builder.calculator_settings = Dict(dict={'relax': relax_settings,
+    builder.calculator_settings = Dict(dict={'vasp': vasp_settings,
                                              'phonon': phonon_settings})
 
     # submit

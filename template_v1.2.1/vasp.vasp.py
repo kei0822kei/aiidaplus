@@ -211,7 +211,8 @@ def main(computer,
     kpoints_vasp = get_kpoints(structure=builder.structure.get_pymatgen(),
                                mesh=kpoints['mesh'],
                                kdensity=kpoints['kdensity'],
-                               offset=kpoints['offset'])
+                               offset=kpoints['offset'],
+                               verbose=True)
     kpt.set_kpoints_mesh(kpoints_vasp['mesh'], offset=kpoints_vasp['offset'])
     builder.kpoints = kpt
 

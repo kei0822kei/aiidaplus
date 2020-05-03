@@ -7,6 +7,7 @@ aiida utils
 import os
 import numpy as np
 import yaml
+from pprint import pprint
 from decimal import Decimal, ROUND_HALF_UP
 from aiida.orm import StructureData
 from pymatgen.core.structure import Structure
@@ -149,7 +150,8 @@ def get_encut(potential_family:str,
 def get_kpoints(structure:Structure,
                 mesh:list=None,
                 kdensity:float=None,
-                offset:list=None):
+                offset:list=None,
+                verbose:bool=False):
     """
     get preferable kpoints mesh and kdnesity
 
@@ -213,6 +215,21 @@ def get_kpoints(structure:Structure,
     m = kgrids['mesh']
     density = structure.lattice.reciprocal_lattice.volume / (m[0]*m[1]*m[2])
     kgrids['density'] = density
+
+    if verbose:
+        print("lattice:")
+        print(structure.lattice)
+        print("")
+        print("inputs:")
+        if mesh is not None:
+            print("mesh: {}".format(mesh))
+        if kdensity is not None:
+            print("kdensity: {}".format(kdensity))
+        if offset is not None:
+            print("offset: {}".format(offset))
+        print("")
+        print("outputs:")
+        pprint(kgrids)
 
     return kgrids
 
