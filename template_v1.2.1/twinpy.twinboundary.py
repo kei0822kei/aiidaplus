@@ -220,13 +220,16 @@ def main(computer,
     # vasp settings
     hexagonal = get_twinpy_structure_from_structure(builder.structure)
     hexagonal.set_parent(twinmode=twinboundary_conf['twinmode'])
+    hexagonal.set_twintype(twinboundary_conf['twintype'])
     hexagonal.set_is_primitive(twinboundary_conf['is_primitive'])
+    hexagonal.set_dimension(twinboundary_conf['dim'])
     hexagonal.run()
     pmgparent = hexagonal.get_pymatgen_structure()
     kpoints_vasp = get_kpoints(structure=pmgparent,
                                 mesh=kpoints['mesh'],
                                 kdensity=kpoints['kdensity'],
-                                offset=kpoints['offset'])
+                                offset=kpoints['offset'],
+                                verbose=True)
     supercell = deepcopy(pmgparent)
     supercell.make_supercell(phonon_conf['supercell_matrix'])
     kpoints_ph = get_kpoints(structure=supercell,
