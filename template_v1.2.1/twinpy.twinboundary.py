@@ -39,11 +39,11 @@ def get_elements(pk):
 #----------------
 # common settings
 #----------------
-wf = 'twinpy.shear'
+wf = 'twinpy.twinboundary'
 label = "this is label"
 description = "this is description"
-dry_run = False
-# dry_run = True
+# dry_run = False
+dry_run = True
 is_phonon = True
 max_wallclock_seconds_relax = 100 * 3600
 max_wallclock_seconds_phonon = 100 * 3600
@@ -52,10 +52,12 @@ clean_workdir = True
 #----------------------
 # twinpy shear settings
 #----------------------
-shear_conf = {
+twinboundary_conf = {
         'twinmode': '10-12',
-        # 'grids': 2,
-        'grids': 5,
+        'twintype': 1,
+        'xgrids': 3,
+        'ygrids': 3,
+        'dim': [1,1,1],
         # 'structure_type': 'primitive'  # or 'conventional' or ''
         'is_primitive': True,  # or 'conventional' or ''
         # 'structure_type': 'conventional'  # or 'conventional' or ''
@@ -232,12 +234,12 @@ def main(computer,
     builder.structure = load_node(structure_pk)
 
     # twinpy settings
-    builder.shear_conf = Dict(dict=shear_conf)
+    builder.twinboundary_conf = Dict(dict=twinboundary_conf)
 
     # vasp settings
     hexagonal = get_twinpy_structure_from_structure(builder.structure)
-    hexagonal.set_parent(twinmode=shear_conf['twinmode'])
-    hexagonal.set_is_primitive(shear_conf['is_primitive'])
+    hexagonal.set_parent(twinmode=twinboundary_conf['twinmode'])
+    hexagonal.set_is_primitive(twinboundary_conf['is_primitive'])
     hexagonal.run()
     pmgparent = hexagonal.get_pymatgen_structure()
     kpoints_relax = get_kpoints(structure=pmgparent,
