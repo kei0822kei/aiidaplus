@@ -84,6 +84,7 @@ def get_grids_from_density(structure:Structure,
         assert len(odd_or_even) == 3
         grids = np.int64([ __fix_num_to_odd_or_even(num, numtype)
                                for num, numtype in zip(grids_float, odd_or_even) ])
+    grids = np.where(grids==0, 1, grids)
     densites = lattice_norms / grids
     return {'grids': grids, 'densities': densites}
 

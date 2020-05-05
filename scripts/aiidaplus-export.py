@@ -9,6 +9,7 @@ This script helps you export various data from aiida database.
 import argparse
 import yaml
 import numpy as np
+from pprint import pprint
 from matplotlib import pyplot as plt
 from aiida.orm import load_node, QueryBuilder, Node
 from aiida.cmdline.utils.decorators import with_dbenv
@@ -17,7 +18,8 @@ from pymatgen.io import vasp as pmgvasp
 from aiidaplus.get_data import (get_structure_data,
                                 get_relax_data,
                                 get_phonon_data,
-                                get_shear_data)
+                                get_shear_data,
+                                get_twinboundary_data)
 from aiidaplus.utils import get_kpoints
 from aiidaplus import plot as aiidaplot
 
@@ -107,6 +109,22 @@ def _export_structure(pk, get_data, show):
             pprint(data[key])
     if get_data:
         filename = 'pk'+str(pk)+'_structure.yaml'
+        dic2yaml(data, filename)
+
+def _export_twinboundary(pk, get_data, show):
+    data = get_twinboundary_data(pk)
+    if show:
+        fig = plt.figure(figsize=(12.5,10))
+        ax = fig.add_subplot(111)
+        aiidaplot.shift_energy_plot(
+                ax,
+                np.array(data['twinboudnary_summary']['shifts']),
+                np.array(data['vasp_results']['energies']),
+                data['twinboudnary_summary']['natoms'])
+        plt.show()
+
+    if get_data:
+        filename = 'pk'+str(pk)+'_twinboundary.yaml'
         dic2yaml(data, filename)
 
 def _export_phonon(pk, get_data, show):
@@ -221,6 +239,8 @@ def main(pk, get_data=False, show=False):
             _export_phonon(pk, get_data, show)
         elif workchain_name == 'ShearWorkChain':
             _export_shear(pk, get_data, show)
+        elif workchain_name == 'TwinBoundaryWorkChain':
+            _export_twinboundary(pk, get_data, show)
         else:
             raise ValueError("workchain %s is not supported" % workchain_name)
     else:

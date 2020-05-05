@@ -57,10 +57,6 @@ twinboundary_conf = {
         'xgrids': 3,
         'ygrids': 3,
         'dim': [1,1,1],
-        # 'structure_type': 'primitive'  # or 'conventional' or ''
-        'is_primitive': True,  # or 'conventional' or ''
-        # 'structure_type': 'conventional'  # or 'conventional' or ''
-        # 'structure_type': ''  # or 'conventional' or ''
         }
 
 #----------
@@ -221,7 +217,6 @@ def main(computer,
     hexagonal = get_twinpy_structure_from_structure(builder.structure)
     hexagonal.set_parent(twinmode=twinboundary_conf['twinmode'])
     hexagonal.set_twintype(twinboundary_conf['twintype'])
-    hexagonal.set_is_primitive(twinboundary_conf['is_primitive'])
     hexagonal.set_dimension(twinboundary_conf['dim'])
     hexagonal.run()
     pmgparent = hexagonal.get_pymatgen_structure()

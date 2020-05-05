@@ -15,6 +15,7 @@ from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 
+
 DEFAULT_COLORS = ['r', 'b', 'm', 'y', 'g', 'c']
 DEFAULT_MARKERS = ['o', 'v', ',', '^', 'h', 'D', '<', '*', '>', 'd']
 
@@ -78,6 +79,38 @@ def line_chart_group(ax, xdata, ydata, xlabel, ylabel, gdata, glabel, **kwargs):
         line_chart(ax, np.array(xdata)[idxes], np.array(ydata)[idxes], xlabel, ylabel, label, **kwargs)
     ax.legend()
 
+def shift_energy_plot(ax, shifts, energies, natoms):
+    from scipy import stats
+    from scipy import interpolate
+    from mpl_toolkits.mplot3d import Axes3D
+    ene_atom = energies / natoms
+    xyz = np.hstack((shifts, ene_atom.reshape(ene_atom.shape[0],1)))
+    x1 = xyz[np.isclose(xyz[:,0], 0)] + np.array([1,0,0])
+    y1 = xyz[np.isclose(xyz[:,1], 0)] + np.array([0,1,0])
+    xy1 = x1[np.isclose(x1[:,1], 0)] + np.array([0,1,0])
+    full_xyz = np.vstack((xyz, x1, y1, xy1))
+    sort_ix = np.argsort((len(np.unique(shifts[:,0]))+1)*full_xyz[:,0] + full_xyz[:,1])
+    sort_xyz = full_xyz[sort_ix]
+
+    xy = sort_xyz[:,:2]
+    z = sort_xyz[:,2]
+
+    x = y = np.linspace(0, 1, 500)
+    X, Y = np.meshgrid(x, y)
+
+    i_Z = interpolate.griddata(xy, z, (X, Y), method='linear')
+
+    # plot interpolation Z
+    im = ax.pcolormesh(X, Y, i_Z, cmap="jet_r", vmax=min(ene_atom)*0.85)
+    plt.colorbar(im, ax=ax, fraction=0.20, label='energy per atom [eV/atom]')
+    ax.scatter(xy[:,0], xy[:,1], c='k')
+    for i in np.unique(shifts[:,0]):
+        ax.axhline(i, c='k', linestyle='--')
+    for i in np.unique(shifts[:,1]):
+        ax.axvline(i, c='k', linestyle='--')
+    ax.set_title("shift energy")
+    ax.set_xlabel("x shift [angstrom]")
+    ax.set_ylabel("y shift [angstrom]")
 
 class BandsPlot(PhonopyBandPlot):
 

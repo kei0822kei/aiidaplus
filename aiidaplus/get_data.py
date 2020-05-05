@@ -227,3 +227,16 @@ def get_shear_data(pk):
     dic['phonon_pks'] = np.array(phonons)[:,1].astype(int).tolist()
 
     return dic
+
+def get_twinboundary_data(pk):
+    """
+    get twinboudnary data
+    """
+    # get called pks
+    node = load_node(pk)
+
+    dic = {}
+    dic['twinboudnary_summary'] = node.outputs.twinboundary_summary.get_dict()
+    dic['vasp_results'] = node.outputs.vasp_results.get_dict()
+
+    return dic
