@@ -113,6 +113,10 @@ def _export_structure(pk, get_data, show):
 
 def _export_twinboundary(pk, get_data, show):
     data = get_twinboundary_data(pk)
+    conf = load_node(pk).inputs.twinboundary_conf
+    lattice = load_node(data['structure_pks'][0][0]).get_pymatgen_structure().lattice
+    a = lattice.a
+    b = lattice.b
     if show:
         fig = plt.figure(figsize=(12.5,10))
         ax = fig.add_subplot(111)
@@ -120,7 +124,19 @@ def _export_twinboundary(pk, get_data, show):
                 ax,
                 np.array(data['twinboudnary_summary']['shifts']),
                 np.array(data['vasp_results']['energies']),
-                data['twinboudnary_summary']['natoms'])
+                data['twinboudnary_summary']['natoms'],
+                a,
+                b,
+                )
+        dim = ''.join(list(map(str, conf['dim'])))
+        title = 'pk{}_{}_{}_d{}'.format(
+            pk,
+            conf['twinmode'],
+            conf['twintype'],
+            dim)
+        ax.set_title(title)
+        plt.savefig('pk{}_twinboundary.png'.format(
+            pk))
         plt.show()
 
     if get_data:

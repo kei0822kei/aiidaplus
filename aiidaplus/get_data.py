@@ -9,7 +9,7 @@ import warnings
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.phonopy import get_phonopy_structure
-from aiida.orm import load_node, QueryBuilder, Node
+from aiida.orm import load_node, QueryBuilder, Node, WorkChainNode, StructureData
 from aiida.common import exceptions
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.plugins import WorkflowFactory
@@ -234,9 +234,16 @@ def get_twinboundary_data(pk):
     """
     # get called pks
     node = load_node(pk)
+    qb = QueryBuilder()
+    qb.append(Node, filters={'id':{'==': pk}})
+    qb.append(WorkChainNode, tag='workchain')
+    qb.append(StructureData, with_outgoing='workchain', project=['id', 'label'])
+    structure_pks = qb.all()
+    structure_pks = list(reversed(structure_pks))
 
     dic = {}
     dic['twinboudnary_summary'] = node.outputs.twinboundary_summary.get_dict()
+    dic['structure_pks'] = structure_pks
     dic['vasp_results'] = node.outputs.vasp_results.get_dict()
 
     return dic
