@@ -40,12 +40,14 @@ def get_elements(pk):
 # common settings
 #----------------
 wf = 'twinpy.modulation'
-label = "this is label"
+# label = "this is label"
+label = "k886 s443 r1.0 modulation"
 description = "this is description"
 dry_run = False
 # dry_run = True
 max_wallclock_seconds = 100 * 3600
-clean_workdir = True
+# clean_workdir = True
+clean_workdir = False
 
 #---------------------------
 # twinpy modulation settings
@@ -53,13 +55,24 @@ clean_workdir = True
 # each set is [q-point, band index (int), amplitude (float), phase (float)]
 # band index start from 0 not 1
 # phase is degree
-phonon_pk = 1
-phonon_modes = [
-                [[0,0,0], 1, 0.2, 0.],
-               ]
+phonon_pk = 21106  # 10-12 shear ratio 1.0
+dimension = np.array([[ 0, 2,-2],
+                      [-1, 1,-1],
+                      [ 0, 1, 1]])
+qpoints = [[-0.5,0.5,0]]
+band_index = 0
+phase_factors = [0., 90., 180., 270.]
+natoms = 8
+mass = 47.8
+amplitudes = np.array([0.1, 0.2, 0.3]) * np.sqrt(natoms * mass)
+phonon_modes = []
+for qpoint in qpoints:
+    for phase_factor in phase_factors:
+        for amplitude in amplitudes:
+            phonon_modes.append([qpoint, band_index, amplitude, phase_factor ])
 # ISIF is set 2 automatically
 incar_update_settings = {
-        'nsw': 20,
+        'nsw': 60,
         'ibrion': 2,
         'ediffg': 1e-4,
         }
@@ -69,6 +82,7 @@ parser_settings = {
     'add_energies': True,
     'add_forces': True,
     'add_stress': True,
+    'add_structure': True,
 
     ### before activate parameters below
     ### always chech whether is works
@@ -86,12 +100,19 @@ parser_settings = {
     # 'add_wavecar': False,
 }
 
+kpoints = {
+    'mesh': [10,4,2],
+    'offset': [0.5,0.5,0.5],
+    }
+
 modulation_conf = {
         'phonon_pk': phonon_pk,
         'phonon_modes': phonon_modes,
+        'dimension': dimension,
         'incar_update_settings': incar_update_settings,
-        'clean_workdir': True,
+        'clean_workdir': clean_workdir,
         'parser_settings': parser_settings,
+        'kpoints': kpoints
         }
 
 def check_group_existing(group):
@@ -121,6 +142,7 @@ def main(computer,
     builder.metadata.description = description
 
     # twinpy settings
+    modulation_conf.update({'queue': queue})
     builder.modulation_conf = Dict(dict=modulation_conf)
 
     # submit

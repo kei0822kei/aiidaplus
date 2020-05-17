@@ -16,6 +16,7 @@ from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 
+plt.rcParams["font.size"] = 18
 
 DEFAULT_COLORS = ['r', 'b', 'm', 'y', 'g', 'c']
 DEFAULT_MARKERS = ['o', 'v', ',', '^', 'h', 'D', '<', '*', '>', 'd']
@@ -80,15 +81,16 @@ def line_chart_group(ax, xdata, ydata, xlabel, ylabel, gdata, glabel, **kwargs):
         line_chart(ax, np.array(xdata)[idxes], np.array(ydata)[idxes], xlabel, ylabel, label, **kwargs)
     ax.legend()
 
-def shift_energy_plot(ax, shifts, energies, natoms, a, b):
+def shift_energy_plot(ax, shifts, energies, natoms, a, b, ev_range=4):
     from scipy import stats
     from scipy import interpolate
     from mpl_toolkits.mplot3d import Axes3D
     ax.set_aspect('equal')
-    ene_atom = energies / natoms
+    # ene_atom = energies / natoms
+    energies = energies
     shifts = np.array(shifts)
     shifts = np.where(shifts>0.5, shifts-1, shifts)
-    xyz = np.hstack((shifts, ene_atom.reshape(ene_atom.shape[0],1)))
+    xyz = np.hstack((shifts, energies.reshape(energies.shape[0],1)))
     x1 = xyz[np.isclose(xyz[:,0], 0.5)] + np.array([-1,0,0])
     y1 = xyz[np.isclose(xyz[:,1], 0.5)] + np.array([0,-1,0])
     xy1 = x1[np.isclose(x1[:,1], 0.5)] + np.array([0,-1,0])
@@ -106,13 +108,15 @@ def shift_energy_plot(ax, shifts, energies, natoms, a, b):
     i_Z = interpolate.griddata(xy*np.array([a,b]), z, (X*a, Y*b), method='linear')
 
     # plot interpolation Z
-    # im = ax.pcolormesh(X*a, Y*b, i_Z, cmap="jet_r", vmax=min(min(ene_atom)*0.85, max(ene_atom)))
-    im = ax.pcolormesh(Y*b, X*a, i_Z, cmap="jet_r", vmin=min(ene_atom), vmax=min(ene_atom)+1)
+    # im = ax.pcolormesh(X*a, Y*b, i_Z, cmap="jet_r", vmax=min(min(energies)*0.85, max(energies)))
+    # im = ax.pcolormesh(Y*b, X*a, i_Z, cmap="jet_r", vmin=min(energies), vmax=min(energies)+1)
+    # im = ax.pcolormesh(Y*b, X*a, i_Z, cmap="jet_r", vmin=min(energies), vmax=min(energies)*0.95)
+    im = ax.pcolormesh(Y*b, X*a, i_Z, cmap="jet_r", vmin=min(energies), vmax=min(energies)+ev_range)
     divider = mpl_toolkits.axes_grid1.make_axes_locatable(ax)
     cax = divider.append_axes('right', '5%', pad='3%')
     # im = ax.imshow(Z, interpolation='none')
     # plt.colorbar(im, ax=ax, fraction=0.20, label='energy per atom [eV/atom]',)
-    plt.colorbar(im, ax=ax, cax=cax, label='energy per atom [eV/atom]',)
+    plt.colorbar(im, ax=ax, cax=cax, label='total energy [eV]')
     # ax.scatter(xy[:,0]*a, xy[:,1]*b, c='k')
     ax.scatter(xy[:,1]*b, xy[:,0]*a, c='k')
     for i in np.unique(shifts[:,1]):
@@ -131,13 +135,18 @@ class BandsPlot(PhonopyBandPlot):
                  band_labels=None,
                  segment_qpoints=None,
                  is_auto=False,
+                 overwrite_phonons=False,
                  xscale=20,
                  npoints=51):
         """
         band plot
         """
         self.fig = fig
-        self.phonons = deepcopy(phonons)
+        # not working now
+        if overwrite_phonons:
+            self.phonons = phonons
+        else:
+            self.phonons = deepcopy(phonons)
         self.band_labels = None
         self.connections = None
         self.axes = None
@@ -309,13 +318,22 @@ def run_band_calc(phonon,
         qpoints, path_connections = get_band_qpoints_and_path_connections(
                 segment_qpoints, npoints=npoints,
                 rec_lattice=np.linalg.inv(phonon.get_primitive().cell))
+        # phonon.run_band_structure(paths=qpoints,
+        #                           with_eigenvectors=False,
+        #                           with_group_velocities=False,
+        #                           is_band_connection=False,
+        #                           path_connections=path_connections,
+        #                           labels=band_labels,
+        #                           is_legacy_plot=False)
         phonon.run_band_structure(paths=qpoints,
-                                  with_eigenvectors=False,
+                                  with_eigenvectors=True,
                                   with_group_velocities=False,
                                   is_band_connection=False,
                                   path_connections=path_connections,
                                   labels=band_labels,
                                   is_legacy_plot=False)
+        print("hoge")
+        phonon.write_yaml_band_structure()
 
 def band_plot(fig,
               phonon,
@@ -361,7 +379,11 @@ def bands_plot(fig,
         linestyles.append('solid')
         if c is None:
             c = 'r'
-        cs = [ c for _ in range(len(phonons)) ]
+            cs = [ c for _ in range(len(phonons)) ]
+        elif type(c) is list:
+            cs = c
+        else:
+            cs = [ c for _ in range(len(phonons)) ]
     else:
         if 'alpahas' not in kwargs:
             alphas = [ 1. ] * len(phonons)

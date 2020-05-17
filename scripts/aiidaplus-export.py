@@ -35,6 +35,8 @@ def get_argparse():
         help="get data")
     parser.add_argument('--show', action='store_true',
         help="show the detailed information of data")
+    parser.add_argument('--ev_range', type=float, default=4.,
+        help="eV range when sheft energy plot is activated")
     args = parser.parse_args()
     return args
 
@@ -111,7 +113,41 @@ def _export_structure(pk, get_data, show):
         filename = 'pk'+str(pk)+'_structure.yaml'
         dic2yaml(data, filename)
 
-def _export_twinboundary(pk, get_data, show):
+def _export_twinboundary(pk, get_data, show, ev_range=4.):
+    data = get_twinboundary_data(pk)
+    conf = load_node(pk).inputs.twinboundary_conf
+    lattice = load_node(data['structure_pks'][0][0]).get_pymatgen_structure().lattice
+    a = lattice.a
+    b = lattice.b
+    if show:
+        fig = plt.figure(figsize=(12.5,10))
+        ax = fig.add_subplot(111)
+        aiidaplot.shift_energy_plot(
+                ax,
+                np.array(data['twinboudnary_summary']['shifts']),
+                np.array(data['vasp_results']['energies']),
+                data['twinboudnary_summary']['natoms'],
+                a,
+                b,
+                ev_range=ev_range,
+                )
+        dim = ''.join(list(map(str, conf['dim'])))
+        title = 'pk{}_{}_{}_d{}'.format(
+            pk,
+            conf['twinmode'],
+            conf['twintype'],
+            dim)
+        ax.set_title(title)
+        plt.savefig('pk{}_twinboundary.png'.format(
+            pk))
+        plt.show()
+
+    if get_data:
+        filename = 'pk'+str(pk)+'_twinboundary.yaml'
+        dic2yaml(data, filename)
+
+def _export_twinboundary_shear(pk, get_data, show):
+    # not edited yet
     data = get_twinboundary_data(pk)
     conf = load_node(pk).inputs.twinboundary_conf
     lattice = load_node(data['structure_pks'][0][0]).get_pymatgen_structure().lattice
@@ -152,10 +188,18 @@ def _export_phonon(pk, get_data, show):
         print("run total dos with mesh: {}".format(mesh))
         phonon.run_mesh(mesh)
         phonon.run_total_dos()
-        phonon.auto_band_structure(plot=False,
-                                   write_yaml=False,
-                                   filename=None,
-                                   npoints=101)
+        if get_data:
+            yamlfile = 'pk'+str(pk)+'_band.yaml'
+            phonon.auto_band_structure(plot=False,
+                                       write_yaml=True,
+                                       filename=yamlfile,
+                                       npoints=101,
+                                       with_eigenvectors=True)
+        else:
+            phonon.auto_band_structure(plot=False,
+                                       write_yaml=False,
+                                       filename=None,
+                                       npoints=101)
         phonon.plot_band_structure_and_dos().show()
     if get_data:
         filename = 'pk'+str(pk)+'_phonon.yaml'
@@ -220,7 +264,7 @@ def _export_relax(pk, get_data, show):
         plt.show()
 
 @with_dbenv()
-def main(pk, get_data=False, show=False):
+def main(pk, get_data=False, show=False, ev_range=4.):
     """
     export specified pk data
 
@@ -256,7 +300,9 @@ def main(pk, get_data=False, show=False):
         elif workchain_name == 'ShearWorkChain':
             _export_shear(pk, get_data, show)
         elif workchain_name == 'TwinBoundaryWorkChain':
-            _export_twinboundary(pk, get_data, show)
+            _export_twinboundary(pk, get_data, show, ev_range)
+        elif workchain_name == 'TwinBoundaryShearWorkChain':
+            _export_twinboundary_shear(pk, get_data, show)
         else:
             raise ValueError("workchain %s is not supported" % workchain_name)
     else:
@@ -265,4 +311,4 @@ def main(pk, get_data=False, show=False):
 
 if __name__ == '__main__':
     args = get_argparse()
-    main(args.node_pk, args.get_data, args.show)
+    main(args.node_pk, args.get_data, args.show, args.ev_range)

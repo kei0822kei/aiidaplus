@@ -107,6 +107,10 @@ def get_description(pmgstruct, symprec):
     from pymatgen.io import vasp as pmgvasp
     data = get_structure_data_from_pymatgen(pmgstruct, symprec=symprec)
     for key in data:
+        if key == 'wyckoffs' or key == 'site_symmetry_symbols':
+            print(key)
+            if len(data[key]) > 5:
+                continue
         print(key+':')
         pprint(data[key])
 
