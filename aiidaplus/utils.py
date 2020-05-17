@@ -182,12 +182,6 @@ def get_kpoints(structure:Structure,
     """
     is_hexagonal = structure.lattice.is_hexagonal()
 
-    if offset is None:
-        if structure.lattice.is_hexagonal():
-            offset = [0, 0, 0.5]
-        else:
-            offset = [0.5, 0.5, 0.5]
-
     if mesh is None and kdensity is None:
         raise ValueError("mesh or kdensity must be specified")
 
@@ -210,6 +204,15 @@ def get_kpoints(structure:Structure,
         lattice_norms = np.array(structure.lattice.reciprocal_lattice.abc)
         densities = lattice_norms / mesh
         kgrids = {'mesh': mesh, 'densities': densities}
+
+    if offset is None:
+        if structure.lattice.is_hexagonal():
+            offset = [0, 0, 0.5]
+        else:
+            offset = [0.5, 0.5, 0.5]
+        for i in range(len(kgrids['mesh'])):
+            if kgrids['mesh'][i] % 2 == 1:
+                offset[i] = 0
 
     kgrids['offset'] = offset
 

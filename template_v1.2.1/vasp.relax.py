@@ -22,6 +22,8 @@ def get_argparse():
         default='', help="queue name, default None")
     parser.add_argument('--group', type=str,
         default=None, help="add nodes to specified group")
+    parser.add_argument('--verbose', action='store_true',
+        default=None, help="show detail")
     args = parser.parse_args()
     return args
 
@@ -149,25 +151,8 @@ parser_settings = {
 kpoints = {
     'mesh': [6, 6, 6],
     'kdensity': None,
-    # 'offset': None
     'offset': [0.5, 0.5, 0.5]
     }
-
-### not use kdensity
-# kpoints = {
-#     'mesh': [6, 6, 6],
-#     'kdensity': None,
-#     'offset': None
-#     # 'offset': [0.5, 0.5, 0.5]
-#     }
-
-### use kdensity
-# kpoints = {
-#     'mesh': None,
-#     'kdensity': 0.2,
-#     'offset': None
-#     # 'offset': [0.5, 0.5, 0.5]
-#     }
 
 
 def check_group_existing(group):
@@ -180,7 +165,8 @@ def check_group_existing(group):
 @with_dbenv()
 def main(computer,
          queue='',
-         group=None):
+         group=None,
+         verbose=False):
 
     # group check
     if group is not None:
@@ -196,7 +182,6 @@ def main(computer,
     # label and descriptions
     builder.metadata.label = label
     builder.metadata.description = description
-
 
     # options
     options = AttributeDict()
@@ -276,7 +261,7 @@ def main(computer,
                                mesh=kpoints['mesh'],
                                kdensity=kpoints['kdensity'],
                                offset=kpoints['offset'],
-                               verbose=True)
+                               verbose=verbose)
     kpt.set_kpoints_mesh(kpoints_vasp['mesh'], offset=kpoints_vasp['offset'])
     builder.kpoints = kpt
 
@@ -299,4 +284,5 @@ def main(computer,
 if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
-         group=args.group)
+         group=args.group,
+         verbose=args.verbose)

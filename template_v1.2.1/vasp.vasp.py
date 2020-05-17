@@ -21,6 +21,8 @@ def get_argparse():
         default='', help="queue name, default None")
     parser.add_argument('--group', type=str,
         default=None, help="add nodes to specified group")
+    parser.add_argument('--verbose', action='store_true',
+        default=None, help="show detail")
     args = parser.parse_args()
     return args
 
@@ -166,7 +168,8 @@ def check_group_existing(group):
 @with_dbenv()
 def main(computer,
          queue='',
-         group=None):
+         group=None,
+         verbose=False):
 
     # group check
     if group is not None:
@@ -235,4 +238,5 @@ def main(computer,
 if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
-         group=args.group)
+         group=args.group,
+         verbose=args.verbose)
