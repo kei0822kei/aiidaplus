@@ -79,13 +79,13 @@ incar_settings_base = {
     }
 
 ### encuts
-encut_grids = 3
+encut_grids = 7
 interval = 50
 encut = get_encut(potential_family=potential_family,
                   potential_mapping=potential_mapping,
                   multiply=1.3)
 init_encut = int(encut)//interval*interval
-encuts = [ init_encut+50*i for i in range(7) ]
+encuts = [ init_encut+50*i for i in range(encut_grids) ]
 encuts.append(encut)
 encuts.sort()
 
@@ -93,7 +93,7 @@ encuts.sort()
 sigmas = [0.1, 0.2, 0.3, 0.4]
 
 ##### not metal
-sigmas = [0.01]
+# sigmas = [0.01]
 
 #--------
 # kpoints

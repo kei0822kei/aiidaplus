@@ -19,6 +19,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 plt.rcParams["font.size"] = 18
 
 DEFAULT_COLORS = ['r', 'b', 'm', 'y', 'g', 'c']
+DEFAULT_COLORS.extend(plt.rcParams['axes.prop_cycle'].by_key()['color'])
 DEFAULT_MARKERS = ['o', 'v', ',', '^', 'h', 'D', '<', '*', '>', 'd']
 
 def decorate_string_for_latex(string):
@@ -37,7 +38,7 @@ def decorate_string_for_latex(string):
         decorated_string = r"$\mathrm{%s}$" % string
     return decorated_string
 
-def line_chart(ax, xdata, ydata, xlabel, ylabel, label=None, **kwargs):
+def line_chart(ax, xdata, ydata, xlabel, ylabel, label=None, alpha=1., **kwargs):
     """
     plot line chart in ax
 
@@ -68,8 +69,8 @@ def line_chart(ax, xdata, ydata, xlabel, ylabel, label=None, **kwargs):
     raw = np.array([xdata, ydata])
     idx = np.array(xdata).argsort()
     sort = raw[:,idx]
-    ax.plot(sort[0,:], sort[1,:], linestyle='--', linewidth='0.5', c=c, label=label)
-    ax.scatter(sort[0,:], sort[1,:], facecolor=facecolor, marker=marker, edgecolor=c)
+    ax.plot(sort[0,:], sort[1,:], linestyle='--', linewidth=0.5, c=c, alpha=alpha, label=label)
+    ax.scatter(sort[0,:], sort[1,:], facecolor=facecolor, marker=marker, edgecolor=c, alpha=alpha)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
@@ -80,6 +81,23 @@ def line_chart_group(ax, xdata, ydata, xlabel, ylabel, gdata, glabel, **kwargs):
         label = '{}: {}'.format(glabel, unique)
         line_chart(ax, np.array(xdata)[idxes], np.array(ydata)[idxes], xlabel, ylabel, label, **kwargs)
     ax.legend()
+
+def line_chart_group_trajectory(ax, xdata, ydata, xlabel, ylabel, gdata, glabel, tdata=None, **kwargs):
+    uniques_ = np.unique(gdata)
+    for j, unique_ in enumerate(uniques_):
+        c = DEFAULT_COLORS[j%len(DEFAULT_COLORS)]
+        uniques = np.unique(tdata)
+        minimum = 0.3
+        alphas = [ minimum+(1.-minimum)/(len(uniques)-1)*i for i in range(len(uniques)) ]
+        for i, unique in enumerate(uniques):
+            marker = DEFAULT_MARKERS[i]
+            idxes = [ idx for idx in range(len(gdata)) if np.isclose(gdata[idx], unique_) and np.isclose(tdata[idx], unique) ]
+            if i == len(uniques)-1:
+                label = '{}: {}'.format(glabel, unique_)
+                line_chart(ax, np.array(xdata)[idxes], np.array(ydata)[idxes], xlabel, ylabel, label, alpha=alphas[i], c=c, marker=marker, **kwargs)
+            else:
+                line_chart(ax, np.array(xdata)[idxes], np.array(ydata)[idxes], xlabel, ylabel, alpha=alphas[i], c=c, marker=marker, **kwargs)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0, fontsize=12)
 
 def shift_energy_plot(ax, shifts, energies, natoms, a, b, ev_range=4):
     from scipy import stats
