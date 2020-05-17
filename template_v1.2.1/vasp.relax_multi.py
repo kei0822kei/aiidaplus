@@ -161,15 +161,15 @@ def check_group_existing(group):
     Group.get(label=group)
     print("OK\n")
 
-def get_val_sets():
+def get_val_sets(structure_pk, encuts, sigmas, meshes=None, kdensities=None):
     val_sets = []
     for encut in encuts:
         for sigma in sigmas:
             if meshes is not None:
                 for mesh in meshes:
-                    label = 'e:{} s{} m{}'.format(encut, sigma, mesh)
-                    description = 'encut:{} sigma{} mesh{}' \
-                            .format(encut, sigma, mesh)
+                    label = 's:{} e:{} s{} m{}'.format(structure_pk, encut, sigma, mesh)
+                    description = 'structure:{} encut:{} sigma{} mesh{}' \
+                            .format(structure_pk, encut, sigma, mesh)
                     val_sets.append({
                         'label': label,
                         'description': description,
@@ -206,7 +206,13 @@ def main(computer,
     if meshes is not None and kdensities is not None:
         raise RuntimeError("both meshes and kdensities are set")
 
-    val_sets = get_val_sets()
+    val_sets = get_val_sets(
+            structure_pk=structure_pk,
+            encuts=encuts,
+            sigmas=sigmas,
+            meshes=meshes,
+            kdensities=kdensities,
+            )
     if verbose:
         print("val_sets: total %s" % len(val_sets))
         pprint(val_sets)
