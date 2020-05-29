@@ -7,6 +7,7 @@ aiida utils
 import os
 import numpy as np
 import yaml
+import math
 from pprint import pprint
 from decimal import Decimal, ROUND_HALF_UP
 from aiida.orm import StructureData
@@ -202,7 +203,7 @@ def get_kpoints(structure:Structure,
         del kgrids['grids']
     else:
         lattice_norms = np.array(structure.lattice.reciprocal_lattice.abc)
-        densities = lattice_norms / mesh
+        densities = mesh / lattice_norms
         kgrids = {'mesh': mesh, 'densities': densities}
 
     if offset is None:
@@ -217,12 +218,17 @@ def get_kpoints(structure:Structure,
     kgrids['offset'] = offset
 
     m = kgrids['mesh']
-    density = structure.lattice.reciprocal_lattice.volume / (m[0]*m[1]*m[2])
+    density = (m[0]*m[1]*m[2]) / structure.lattice.reciprocal_lattice.volume
+    ave_density = math.pow(density,1/3)
     kgrids['density'] = density
+    kgrids['ave_density'] = ave_density
 
     if verbose:
         print("lattice:")
         print(structure.lattice)
+        print("")
+        print("reciprocal lattice (including 2pi):")
+        print(structure.lattice.reciprocal_lattice)
         print("")
         print("inputs:")
         if mesh is not None:
@@ -233,6 +239,9 @@ def get_kpoints(structure:Structure,
             print("offset: {}".format(offset))
         print("")
         print("outputs:")
+        print("# unit of densities is [anstrome]")
+        print("# so densities are equal to the intervals of each axis")
+        print("# ave_density is cube root of density")
         pprint(kgrids)
 
     return kgrids
