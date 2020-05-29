@@ -16,7 +16,7 @@ from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
 from mpl_toolkits.axes_grid1 import ImageGrid
 
 
-plt.rcParams["font.size"] = 18
+# plt.rcParams["font.size"] = 18
 
 DEFAULT_COLORS = ['r', 'b', 'm', 'y', 'g', 'c']
 DEFAULT_COLORS.extend(plt.rcParams['axes.prop_cycle'].by_key()['color'])

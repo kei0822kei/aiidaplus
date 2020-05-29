@@ -48,7 +48,8 @@ clean_workdir = True
 # structure
 #----------
 # structure_pk = 3932
-structure_pk = 1250 # Ti_c
+# structure_pk = 1250 # Ti_c
+structure_pk = 17026 # glass
 elements = get_elements(structure_pk)
 
 #-------

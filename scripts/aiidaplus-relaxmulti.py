@@ -12,7 +12,7 @@ import numpy as np
 import argparse
 from pprint import pprint
 from matplotlib import pyplot as plt
-from aiidaplus.plot import line_chart_group_trajectory
+from aiidaplus.plot import line_chart_group, line_chart_group_trajectory
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.orm import load_node
 
@@ -32,6 +32,10 @@ def get_argparse():
         help="tdata, default: None, you can choose sigmas for example")
     parser.add_argument('--title', type=str, default='relax multi plot',
         help="fig title default: relax multi plot")
+    parser.add_argument('--figname', type=str, default=None,
+        help="if set 'auto, figname becomes the same as title'")
+    parser.add_argument('--show', action='store_true',
+        help="show plot")
     args = parser.parse_args()
     return args
 
@@ -46,10 +50,11 @@ def import_yamls(relax_dir):
 
 def get_data(relaxes):
     kdensities = [ relax['steps']['step_00']['kpoints']['density'] for relax in relaxes ]
-    kpoints_nums = []
-    for relax in relaxes:
-        m = relax['steps']['step_00']['kpoints']['mesh']
-        kpoints_nums.append(m[0]*m[1]*m[2])
+    # kpoints_nums = []
+    # for relax in relaxes:
+    #     m = relax['steps']['step_00']['kpoints']['mesh']
+    #     kpoints_nums.append(m[0]*m[1]*m[2])
+    kpoints_nums = 1. / np.array(kdensities)
     sigmas = [ relax['steps']['step_00']['incar']['sigma'] for relax in relaxes ]
     encuts = [ relax['steps']['step_00']['incar']['encut'] for relax in relaxes ]
     energies = [ relax['final_energy_no_entropy'] for relax in relaxes ]
@@ -71,28 +76,93 @@ def get_data(relaxes):
     }
     return datas
 
-def get_plot(datas, xdata, ydata, gdata, tdata, title):
-    x = datas[xdata]
-    y = datas[ydata]
+def get_plot(datas, xdata, ydata, gdata, tdata, title, figname, show):
+    x = np.array(datas[xdata])
+    y = np.array(datas[ydata])
     xlabel = xdata
     ylabel = ydata
-    g = datas[gdata]
+    g = np.array(datas[gdata])
     glabel = gdata
-    t = datas[tdata]
     title = title
 
-    fig = plt.figure(figsize=(14,14))
-    ax = fig.add_axes((0.15, 0.15, 0.6, 0.8))
-    line_chart_group_trajectory(ax=ax,
-                     xdata=x,
-                     ydata=y,
-                     xlabel=xlabel,
-                     ylabel=ylabel,
-                     gdata=g,
-                     glabel=glabel,
-                     tdata=t)
+    if tdata is None:
+        fig = plt.figure(figsize=(14,14))
+        ax = fig.add_axes((0.15, 0.15, 0.6, 0.8))
+        line_chart_group(ax=ax,
+                         xdata=x,
+                         ydata=y,
+                         xlabel=xlabel,
+                         ylabel=ylabel,
+                         gdata=g,
+                         glabel=glabel)
+    else:
+        unique_t = np.unique(datas[tdata])
+        fig = plt.figure(figsize=(8*len(unique_t),8))
+        for i, t in enumerate(unique_t):
+            ax = fig.add_subplot(1,len(unique_t),i+1)
+            idxes = [ idx for idx in range(len(datas[tdata])) if np.isclose(datas[tdata][idx], t) ]
+            line_chart_group(ax=ax,
+                             xdata=x[idxes],
+                             ydata=y[idxes],
+                             xlabel=xlabel,
+                             ylabel=ylabel,
+                             gdata=g[idxes],
+                             glabel=glabel)
+            ax.set_title('{} = {}'.format(tdata, t))
+            ax.set_ylim(min(y), max(y))
     fig.suptitle(title, fontsize=18)
-    plt.show()
+    plt.tight_layout()
+    # if ydata == 'vols_per_atom':
+    #     ax.set_ylim(min(y)-0.01, min(y)+0.03)
+    if show:
+        plt.show()
+    if figname is not None:
+        if figname == 'auto':
+            fname = title
+        else:
+            fname = figname
+        plt.savefig(fname)
+
+# def get_plot(datas, xdata, ydata, gdata, tdata, title, figname, show):
+#     x = datas[xdata]
+#     y = datas[ydata]
+#     xlabel = xdata
+#     ylabel = ydata
+#     g = datas[gdata]
+#     glabel = gdata
+#     title = title
+# 
+#     fig = plt.figure(figsize=(14,14))
+#     ax = fig.add_axes((0.15, 0.15, 0.6, 0.8))
+#     if tdata is None:
+#         line_chart_group(ax=ax,
+#                          xdata=x,
+#                          ydata=y,
+#                          xlabel=xlabel,
+#                          ylabel=ylabel,
+#                          gdata=g,
+#                          glabel=glabel)
+#     else:
+#         t = datas[tdata]
+#         line_chart_group_trajectory(ax=ax,
+#                          xdata=x,
+#                          ydata=y,
+#                          xlabel=xlabel,
+#                          ylabel=ylabel,
+#                          gdata=g,
+#                          glabel=glabel,
+#                          tdata=t)
+#     fig.suptitle(title, fontsize=18)
+#     if ydata == 'vols_per_atom':
+#         ax.set_ylim(min(y)-0.01, min(y)+0.03)
+#     if show:
+#         plt.show()
+#     if figname is not None:
+#         if figname == 'auto':
+#             fname = title
+#         else:
+#             fname = figname
+#         plt.savefig(fname)
 
 @with_dbenv()
 def main(relax_dir,
@@ -100,10 +170,12 @@ def main(relax_dir,
          ydata,
          gdata,
          tdata,
-         title):
+         title,
+         figname,
+         show):
     relaxes = import_yamls(relax_dir)
     datas = get_data(relaxes)
-    get_plot(datas, xdata, ydata, gdata, tdata, title)
+    get_plot(datas, xdata, ydata, gdata, tdata, title, figname, show)
 
 if __name__ == '__main__':
     args = get_argparse()
@@ -113,4 +185,6 @@ if __name__ == '__main__':
          gdata=args.gdata,
          tdata=args.tdata,
          title=args.title,
+         figname=args.figname,
+         show=args.show,
          )

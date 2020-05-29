@@ -22,6 +22,8 @@ def get_argparse():
         help="input file type, currently supported 'cif' or 'poscar' or 'pk'")
     parser.add_argument('--label', type=str, default='',
         help="add label to the structure node")
+    parser.add_argument('--description', type=str, default='',
+        help="if '', description becomes the same as label")
     parser.add_argument('--get_cif', action='store_true',
         help="get cif file")
     parser.add_argument('--get_json', action='store_true',
@@ -114,12 +116,15 @@ def get_description(pmgstruct, symprec):
         print(key+':')
         pprint(data[key])
 
-def import_to_aiida(pmgstruct, label, group=None):
+def import_to_aiida(pmgstruct, label, description, group=None):
     from aiida.orm.nodes.data import StructureData
     from aiida.orm import Group
     structure = StructureData(pymatgen_structure=pmgstruct)
     structure.label = label
-    structure.description = label
+    if description == '':
+        structure.description = label
+    else:
+        structure.description = description
     structure.store()
     print("structure data imported")
     print("pk : %s \n" % str(structure.pk))
@@ -156,6 +161,7 @@ def main(filename,
          primitive,
          show,
          label,
+         description,
          symprec):
 
     pmgstruct = get_pmgstructure(filename, filetype, symprec)
@@ -172,7 +178,7 @@ def main(filename,
     if get_poscar:
         export_structure(pmgstruct, 'poscar')
     if add_db:
-        import_to_aiida(pmgstruct, label, group)
+        import_to_aiida(pmgstruct, label, description, group)
 
 if __name__ == '__main__':
     args = get_argparse()
@@ -191,4 +197,5 @@ if __name__ == '__main__':
          primitive=args.primitive,
          show=args.show,
          label=args.label,
+         description=args.description,
          symprec=args.symprec)
