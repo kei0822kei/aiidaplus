@@ -48,8 +48,8 @@ clean_workdir = True
 # structure
 #----------
 # structure_pk = 3932
-# structure_pk = 1250 # Ti_c
-structure_pk = 17026 # glass
+structure_pk = 1250 # Ti_c, aiida
+# structure_pk = 17026 # glass
 elements = get_elements(structure_pk)
 
 #-------
@@ -139,21 +139,21 @@ parser_settings = {
 #--------
 # kpoints = {
 #     'mesh': [6, 6, 6],
-#     'kdensity': None,
+#     'interval': None,
 #     'offset': [0.5, 0.5, 0.5]
 #     # 'offset': [0.5, 0.5, 0.5]
 #     }
-### not use kdensity
+### not use interval
 # kpoints = {
 #     'mesh': [6, 6, 6],
-#     'kdensity': None,
+#     'interval': None,
 #     'offset': None
 #     # 'offset': [0.5, 0.5, 0.5]
 #     }
-### use kdensity
+### use interval
 kpoints = {
     'mesh': None,
-    'kdensity': 0.2,
+    'interval': 0.2,
     'offset': None
     # 'offset': [0.5, 0.5, 0.5]
     }
@@ -214,7 +214,7 @@ def main(computer,
     kpt = KpointsData()
     kpoints_vasp = get_kpoints(structure=builder.structure.get_pymatgen(),
                                mesh=kpoints['mesh'],
-                               kdensity=kpoints['kdensity'],
+                               interval=kpoints['interval'],
                                offset=kpoints['offset'],
                                verbose=True)
     kpt.set_kpoints_mesh(kpoints_vasp['mesh'], offset=kpoints_vasp['offset'])

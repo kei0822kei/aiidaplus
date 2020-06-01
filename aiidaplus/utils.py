@@ -31,22 +31,22 @@ def round_off(x:float):
     """
     return int(Decimal(str(x)).quantize(Decimal('0'), rounding=ROUND_HALF_UP))
 
-def get_grids_from_density(structure:Structure,
-                           grid_density:float,
-                           direct_or_reciprocal:str,
-                           odd_or_even:list=None):
+def get_grids_from_interval(structure:Structure,
+                             grid_interval:float,
+                             direct_or_reciprocal:str,
+                             odd_or_even:list=None):
     """
     get grid from structure
 
     Args:
         structure (pymatgen.core.structure.Structure): structure
-        grid_density (float): grid density
+        grid_interval (float): grid intervals
         direct_or_reciprocal (str): choose 'direct' or 'reciprocal'
         odd_or_even (list): if you specify as [ 'even', 'odd', None ]
         fix the result list to [ even_num, odd_num, original_num ]
 
     Returns:
-        dict: grids and density
+        dict: grids and intervals
 
     Raises:
         ValueError: either 'direct' or 'reciprocal' did not specified
@@ -78,7 +78,7 @@ def get_grids_from_density(structure:Structure,
         raise ValueError("'direct_or_reciprocal' must be specified as \n \
                           'dicrect' or 'reciprocal'")
     lattice_norms = np.array(abc)
-    grids_float = lattice_norms / grid_density
+    grids_float = lattice_norms / grid_interval
     if odd_or_even is None:
         grids = np.int64(np.round(grids_float))
     else:
@@ -86,8 +86,8 @@ def get_grids_from_density(structure:Structure,
         grids = np.int64([ __fix_num_to_odd_or_even(num, numtype)
                                for num, numtype in zip(grids_float, odd_or_even) ])
     grids = np.where(grids==0, 1, grids)
-    densites = lattice_norms / grids
-    return {'grids': grids, 'densities': densites}
+    intervals = lattice_norms / grids
+    return {'grids': grids, 'intervals': intervals}
 
 def get_elements_from_aiidastructure(aiidastructure:StructureData):
     """
@@ -151,7 +151,7 @@ def get_encut(potential_family:str,
 
 def get_kpoints(structure:Structure,
                 mesh:list=None,
-                kdensity:float=None,
+                interval:float=None,
                 offset:list=None,
                 verbose:bool=False):
     """
@@ -160,17 +160,17 @@ def get_kpoints(structure:Structure,
     Args:
         structure (pymatgen.core.structure.Structure): structure
         mesh (list): the number of kpoints, default:None
-        kdensity (float): kdensity included 2*pi in reciprocal lattice,
+        interval (float): interval included 2*pi in reciprocal lattice,
         default:None
         offset (list): shift from (0,0,0)
 
     Returns:
         dict: mesh, offset, densities of kpoints of each axis
-              and density in resicprocal lattice
+              and interval in resicprocal lattice
 
     Raises:
-        ValueError: both mesh and kdensity are None
-        ValueError: mesh and kdensity are both specified
+        ValueError: both mesh and intervals are None
+        ValueError: mesh and intervals are both specified
 
     Examples:
         description
@@ -182,29 +182,30 @@ def get_kpoints(structure:Structure,
         description
     """
     is_hexagonal = structure.lattice.is_hexagonal()
+    inputs = {'mesh': mesh, 'interval': interval, 'offset': offset}
 
-    if mesh is None and kdensity is None:
-        raise ValueError("mesh or kdensity must be specified")
+    if mesh is None and interval is None:
+        raise ValueError("mesh or interval must be specified")
 
-    if mesh is not None and kdensity is not None:
-        raise ValueError("mesh and kdensity are both specified")
+    if mesh is not None and interval is not None:
+        raise ValueError("mesh and interval are both specified")
 
-    if kdensity is not None:
+    if interval is not None:
         if is_hexagonal:
             odd_or_even = ('odd', 'odd', 'even')
         else:
             odd_or_even = ('even', 'even', 'even')
-        kgrids = get_grids_from_density(
+        kgrids = get_grids_from_interval(
                     structure=structure,
-                    grid_density=kdensity,
+                    grid_interval=interval,
                     direct_or_reciprocal='reciprocal',
                     odd_or_even=odd_or_even)
         kgrids['mesh'] = kgrids['grids']
         del kgrids['grids']
     else:
         lattice_norms = np.array(structure.lattice.reciprocal_lattice.abc)
-        densities = mesh / lattice_norms
-        kgrids = {'mesh': mesh, 'densities': densities}
+        intervals = lattice_norms / mesh
+        kgrids = {'mesh': mesh, 'intervals': intervals}
 
     if offset is None:
         if structure.lattice.is_hexagonal():
@@ -218,10 +219,11 @@ def get_kpoints(structure:Structure,
     kgrids['offset'] = offset
 
     m = kgrids['mesh']
-    density = (m[0]*m[1]*m[2]) / structure.lattice.reciprocal_lattice.volume
-    ave_density = math.pow(density,1/3)
-    kgrids['density'] = density
-    kgrids['ave_density'] = ave_density
+    vol_per_mesh = structure.lattice.reciprocal_lattice.volume / (m[0]*m[1]*m[2])
+    # ave_interval = vol_per_mesh ** (1/3)
+    ave_interval = np.average(kgrids['intervals'])
+    kgrids['ave_interval'] = float(ave_interval)
+    kgrids['density'] = m[0]*m[1]*m[2] / structure.lattice.reciprocal_lattice.volume
 
     if verbose:
         print("lattice:")
@@ -231,17 +233,13 @@ def get_kpoints(structure:Structure,
         print(structure.lattice.reciprocal_lattice)
         print("")
         print("inputs:")
-        if mesh is not None:
-            print("mesh: {}".format(mesh))
-        if kdensity is not None:
-            print("kdensity: {}".format(kdensity))
-        if offset is not None:
-            print("offset: {}".format(offset))
+        pprint(inputs)
         print("")
         print("outputs:")
-        print("# unit of densities is [anstrome]")
-        print("# so densities are equal to the intervals of each axis")
-        print("# ave_density is cube root of density")
+        print("# unit of interval is [/anstrome]")
+        print("# unit of density is [angstrome^3]")
+        # print("# ave_interval is math.pow(recip_vol_per_mesh, 1/3)")
+        print("# ave_interval is the average of interval of each axis")
         pprint(kgrids)
 
     return kgrids

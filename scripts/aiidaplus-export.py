@@ -184,7 +184,7 @@ def _export_phonon(pk, get_data, show):
     if show:
         pmgstructure = load_node(pk).inputs.structure.get_pymatgen_structure()
         mesh = get_kpoints(structure=pmgstructure.get_primitive_structure(tolerance=1e-5),
-                           kdensity=0.15)['mesh']
+                           interval=0.15)['mesh']
         print("run total dos with mesh: {}".format(mesh))
         phonon.run_mesh(mesh)
         phonon.run_total_dos()

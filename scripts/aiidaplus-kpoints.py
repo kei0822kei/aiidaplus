@@ -22,8 +22,8 @@ def get_argparse():
         help="input file name or structure pk")
     parser.add_argument('-t', '--filetype', type=str, default=None,
         help="input file type, currently supported 'cif' or 'poscar' or 'pk'")
-    parser.add_argument('--kdensity', type=float, default=None,
-        help="kdensity")
+    parser.add_argument('--interval', type=float, default=None,
+        help="interval")
     parser.add_argument('--mesh', type=str, default=None,
         help="mesh ex. '6 6 6'")
     args = parser.parse_args()
@@ -81,20 +81,20 @@ def get_pmgstructure(filename, filetype, symprec):
 @with_dbenv()
 def main(filename,
          filetype,
-         kdensity,
+         interval,
          mesh):
 
     symprec = 1e-5
 
     pmgstruct = get_pmgstructure(filename, filetype, symprec)
-    kpts = get_kpoints(pmgstruct, mesh=mesh, kdensity=kdensity, verbose=True)
+    kpts = get_kpoints(pmgstruct, mesh=mesh, interval=interval, verbose=True)
 
 if __name__ == '__main__':
     args = get_argparse()
-    if args.kdensity is None and args.mesh is None:
-        raise ValueError("both mesh and kdensity are not specified")
-    if args.kdensity is not None and args.mesh is not None:
-        raise ValueError("both mesh and kdensity are specified")
+    if args.interval is None and args.mesh is None:
+        raise ValueError("both mesh and interval are not specified")
+    if args.interval is not None and args.mesh is not None:
+        raise ValueError("both mesh and interval are specified")
 
     if args.mesh is not None:
         mesh = np.array(list(map(int, args.mesh.split())))
@@ -102,5 +102,5 @@ if __name__ == '__main__':
         mesh = None
     main(filename=args.filename,
          filetype=args.filetype,
-         kdensity=args.kdensity,
+         interval=args.interval,
          mesh=mesh)

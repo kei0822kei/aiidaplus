@@ -115,7 +115,7 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
             structure=load_node(initial_structure_pk).get_pymatgen_structure(),
             mesh=node.inputs.kpoints.get_kpoints_mesh()[0],
             )
-    kpoints['densities'] = kpoints['densities'].tolist()
+    kpoints['intervals'] = kpoints['intervals'].tolist()
 
     dic = {}
     dic['data_type'] = node.process_class.get_name()
