@@ -212,9 +212,9 @@ def get_kpoints(structure:Structure,
             offset = [0, 0, 0.5]
         else:
             offset = [0.5, 0.5, 0.5]
-        for i in range(len(kgrids['mesh'])):
-            if kgrids['mesh'][i] % 2 == 1:
-                offset[i] = 0
+            for i in range(len(kgrids['mesh'])):
+                if kgrids['mesh'][i] % 2 == 1:
+                    offset[i] = 0
 
     kgrids['offset'] = offset
 
