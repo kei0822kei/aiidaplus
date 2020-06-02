@@ -222,7 +222,7 @@ def get_shear_data(pk):
     dic['parent'] = get_structure_data(node.outputs.parent.pk)
     dic['relax_results'] = node.outputs.relax_results.get_dict()
     dic['shear_ratios'] = node.outputs.shear_ratios.get_dict()['shear_ratios']
-    dic['strain'] = node.outputs.strain.value
+    dic['gamma'] = node.outputs.gamma.value
     dic['relax_pks'] = np.array(relaxes)[:,1].astype(int).tolist()
     dic['phonon_pks'] = np.array(phonons)[:,1].astype(int).tolist()
 

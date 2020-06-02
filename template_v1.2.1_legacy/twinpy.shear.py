@@ -10,9 +10,7 @@ from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import run, submit
 from aiida.orm import (load_node, Bool, Code, Dict, Float,
                        Group, Int, Str, KpointsData)
-from aiida_twinpy.common.structure import get_cell_from_aiida
-from pymatgen.io.phonopy import get_pmg_structure
-from twinpy.api_twinpy import get_twinpy_from_cell
+from aiida_twinpy.common.structure import get_twinpy_structure_from_structure
 from aiidaplus.utils import (get_kpoints,
                              get_default_potcar_mapping,
                              get_elements_from_aiidastructure,
@@ -56,14 +54,10 @@ clean_workdir = True
 #----------------------
 shear_conf = {
         'twinmode': '10-12',
-        'dim': [1,1,1],
-        'xshift': 0.,
-        'yshift': 0.,
         # 'grids': 2,
         'grids': 5,
-        'structure_type': 'primitive',
         # 'structure_type': 'primitive'  # or 'conventional' or ''
-        # 'is_primitive': True,  # or 'conventional' or ''
+        'is_primitive': True,  # or 'conventional' or ''
         # 'structure_type': 'conventional'  # or 'conventional' or ''
         # 'structure_type': ''  # or 'conventional' or ''
         }
@@ -177,21 +171,21 @@ parser_settings = {
 #--------
 # kpoints = {
 #     'mesh': [6, 6, 6],
-#     'interval': None,
+#     'kdensity': None,
 #     'offset': [0.5, 0.5, 0.5]
 #     # 'offset': [0.5, 0.5, 0.5]
 #     }
-### not use interval
+### not use kdensity
 # kpoints = {
 #     'mesh': [6, 6, 6],
-#     'interval': None,
+#     'kdensity': None,
 #     'offset': None
 #     # 'offset': [0.5, 0.5, 0.5]
 #     }
-### use interval
+### use kdensity
 kpoints = {
     'mesh': None,
-    'interval': 0.2,
+    'kdensity': 0.2,
     'offset': None
     # 'offset': [0.5, 0.5, 0.5]
     }
@@ -199,10 +193,10 @@ kpoints = {
 #---------------
 # kpoints_phonon
 #---------------
-### use interval
+### use kdensity
 kpoints_phonon = {
     'mesh': None,
-    'interval': 0.2,
+    'kdensity': 0.2,
     'offset': None,
     }
 
@@ -241,31 +235,20 @@ def main(computer,
     builder.shear_conf = Dict(dict=shear_conf)
 
     # vasp settings
-    # hexagonal = get_twinpy_structure_from_structure(builder.structure)
-    # hexagonal.set_parent(twinmode=shear_conf['twinmode'])
-    # hexagonal.set_is_primitive(shear_conf['is_primitive'])
-    # hexagonal.run()
-    # pmgparent = hexagonal.get_pymatgen_structure()
-    cell = get_cell_from_aiida(builder.structure,
-                               get_scaled_positions=True)
-    twinpy = get_twinpy_from_cell(cell=cell,
-                                  twinmode=shear_conf['twinmode'])
-    twinpy.set_shear(xshift=shear_conf['xshift'],
-                     yshift=shear_conf['yshift'],
-                     dim=shear_conf['dim'],
-                     shear_strain_ratio=0.)
-    ph_shear = twinpy.get_shear_phonopy_structure(
-                   structure_type=shear_conf['structure_type'])
-    pmgstructure = get_pmg_structure(ph_shear)
-    kpoints_relax = get_kpoints(structure=pmgstructure,
+    hexagonal = get_twinpy_structure_from_structure(builder.structure)
+    hexagonal.set_parent(twinmode=shear_conf['twinmode'])
+    hexagonal.set_is_primitive(shear_conf['is_primitive'])
+    hexagonal.run()
+    pmgparent = hexagonal.get_pymatgen_structure()
+    kpoints_relax = get_kpoints(structure=pmgparent,
                                 mesh=kpoints['mesh'],
-                                interval=kpoints['interval'],
+                                kdensity=kpoints['kdensity'],
                                 offset=kpoints['offset'])
-    supercell = deepcopy(pmgstructure)
+    supercell = deepcopy(pmgparent)
     supercell.make_supercell(phonon_conf['supercell_matrix'])
     kpoints_ph = get_kpoints(structure=supercell,
                              mesh=kpoints_phonon['mesh'],
-                             interval=kpoints_phonon['interval'],
+                             kdensity=kpoints_phonon['kdensity'],
                              offset=kpoints_phonon['offset'])
     base_settings = {
             'vasp_code': 'vasp544mpi',

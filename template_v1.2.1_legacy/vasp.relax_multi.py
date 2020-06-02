@@ -80,11 +80,11 @@ incar_settings_base = {
 
 ### encuts
 encut_grids = 7
-e_interval = 50
+interval = 50
 encut = get_encut(potential_family=potential_family,
                   potential_mapping=potential_mapping,
                   multiply=1.3)
-init_encut = int(encut)//e_interval*e_interval
+init_encut = int(encut)//interval*interval
 encuts = [ init_encut+50*i for i in range(encut_grids) ]
 encuts.append(encut)
 encuts.sort()
@@ -102,12 +102,12 @@ sigmas = [0.1, 0.2, 0.3, 0.4]
 
 ### type1
 # meshes = [[6,6,6], [8,8,8], [10,10,10]]
-# intervals = None
+# kdensities = None
 # offset = None
 
 ### type2
 meshes = None
-intervals = [0.3, 0.2, 0.1]
+kdensities = [0.3, 0.2, 0.1]
 offset = None
 
 #---------------
@@ -161,7 +161,7 @@ def check_group_existing(group):
     Group.get(label=group)
     print("OK\n")
 
-def get_val_sets(structure_pk, encuts, sigmas, meshes=None, intervals=None):
+def get_val_sets(structure_pk, encuts, sigmas, meshes=None, kdensities=None):
     val_sets = []
     for encut in encuts:
         for sigma in sigmas:
@@ -175,20 +175,20 @@ def get_val_sets(structure_pk, encuts, sigmas, meshes=None, intervals=None):
                         'description': description,
                         'encut': encut,
                         'sigma': sigma,
-                        'interval': None,
+                        'kdensity': None,
                         'mesh': mesh,
                         })
             else:
-                for interval in intervals:
-                    label = 'e:{} s{} d{}'.format(encut, sigma, interval)
-                    description = 'encut:{} sigma{} interval{}' \
-                            .format(encut, sigma, interval)
+                for kdensity in kdensities:
+                    label = 'e:{} s{} d{}'.format(encut, sigma, kdensity)
+                    description = 'encut:{} sigma{} kdensity{}' \
+                            .format(encut, sigma, kdensity)
                     val_sets.append({
                         'label': label,
                         'description': description,
                         'encut': encut,
                         'sigma': sigma,
-                        'interval': interval,
+                        'kdensity': kdensity,
                         'mesh': None,
                         })
     return val_sets
@@ -203,15 +203,15 @@ def main(computer,
     if group is not None:
         check_group_existing(group)
 
-    if meshes is not None and intervals is not None:
-        raise RuntimeError("both meshes and intervals are set")
+    if meshes is not None and kdensities is not None:
+        raise RuntimeError("both meshes and kdensities are set")
 
     val_sets = get_val_sets(
             structure_pk=structure_pk,
             encuts=encuts,
             sigmas=sigmas,
             meshes=meshes,
-            intervals=intervals,
+            kdensities=kdensities,
             )
     if verbose:
         print("val_sets: total %s" % len(val_sets))
@@ -229,7 +229,7 @@ def main(computer,
 
         kpoints = {
             'mesh': vals['mesh'],
-            'interval': vals['interval'],
+            'kdensity': vals['kdensity'],
             'offset': offset,
             }
 
@@ -320,7 +320,7 @@ def main(computer,
         kpt = KpointsData()
         kpoints_vasp = get_kpoints(structure=builder.structure.get_pymatgen(),
                                    mesh=kpoints['mesh'],
-                                   interval=kpoints['interval'],
+                                   kdensity=kpoints['kdensity'],
                                    offset=kpoints['offset'],
                                    verbose=verbose)
         kpt.set_kpoints_mesh(kpoints_vasp['mesh'], offset=kpoints_vasp['offset'])

@@ -81,7 +81,7 @@ def _export_shear(pk, get_data, show):
         ax1 = fig.add_subplot(111)
         aiidaplot.line_chart(
                 ax1,
-                dic['strain'] * np.array(dic['shear_ratios']),
+                dic['gamma'] * np.array(dic['shear_ratios']),
                 (np.array(dic['relax_results']['energies']) \
                     - dic['relax_results']['energies'][0]) \
                       * 1000 / dic['parent']['natoms'],

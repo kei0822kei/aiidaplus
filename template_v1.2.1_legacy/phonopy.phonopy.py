@@ -108,7 +108,7 @@ incar_settings.update(smearing_settings)
 #------------------------
 kpoints_fc2 = {
     'mesh': [6, 6, 6],
-    'interval': None,
+    'kdensity': None,
     'offset': [0.5, 0.5, 0.5]
     }
 
@@ -116,7 +116,7 @@ kpoints_fc2 = {
 # 'offset' is set by phonopy automatically ?
 kpoints_nac = {
     'mesh': [12, 12 ,12],
-    'interval': None,
+    'kdensity': None,
     # 'offset': [0,0,0],  # there is no input parameters, see script below
     }
 
@@ -161,7 +161,7 @@ def main(computer,
         kpt_fc2 = get_kpoints(
                 structure=pmgstructure,
                 mesh=kpoints_fc2['mesh'],
-                interval=kpoints_fc2['interval'],
+                kdensity=kpoints_fc2['kdensity'],
                 offset=kpoints_fc2['offset'])
         dic = {}
         base_config = {'code_string': vasp_code+'@'+computer,
@@ -192,7 +192,7 @@ def main(computer,
             kpoints_nac = get_kpoints(
                     structure=pmgstructure.get_primitive_structure(),
                     mesh=kpoints_nac['mesh'],
-                    interval=kpoints_nac['interval'],
+                    kdensity=kpoints_nac['kdensity'],
                     offset=None)
             nac_config.update({'kpoints_mesh': kpoints_nac['mesh'],
                                'parser_settings': nac_parser_settings,
