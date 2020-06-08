@@ -115,14 +115,14 @@ def get_plot(datas, xdata, ydata, gdata, tdata, title, figname, show):
     fig.suptitle(title, fontsize=18)
     # if ydata == 'vols_per_atom':
     #     ax.set_ylim(min(y)-0.01, min(y)+0.03)
-    if show:
-        plt.show()
     if figname is not None:
         if figname == 'auto':
             fname = title
         else:
             fname = figname
         plt.savefig(fname)
+    if show:
+        plt.show()
 
 # def get_plot(datas, xdata, ydata, gdata, tdata, title, figname, show):
 #     x = datas[xdata]

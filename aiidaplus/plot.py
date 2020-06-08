@@ -201,8 +201,8 @@ class BandsPlot(PhonopyBandPlot):
     def _set_axs(self):
         n = len([x for x in self.phonons[0].band_structure.path_connections if not x])
         self.axs = ImageGrid(self.fig, 111,  # similar to subplot(111)
-                             nrows_ncols=(1, n),
-                             axes_pad=0.11,
+                             nrows_ncols=(1, n),  # n is the number of figures
+                             axes_pad=0.11,   # pad between axes in inch.
                              add_all=True,
                              label_mode="L")
 
@@ -350,7 +350,6 @@ def run_band_calc(phonon,
                                   path_connections=path_connections,
                                   labels=band_labels,
                                   is_legacy_plot=False)
-        print("hoge")
         phonon.write_yaml_band_structure()
 
 def band_plot(fig,

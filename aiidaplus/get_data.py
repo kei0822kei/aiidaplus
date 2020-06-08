@@ -121,6 +121,7 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
     dic['data_type'] = node.process_class.get_name()
     dic['pk'] = pk
     dic['incar'] = node.inputs.parameters.get_dict()
+    dic['parser_settings'] = node.inputs.settings.get_dict()['parser_settings']
     dic['potential_family'] = node.inputs.potential_family.value
     dic['potential_mapping'] = node.inputs.potential_mapping.get_dict()
     dic['kpoints'] = kpoints
