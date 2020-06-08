@@ -212,8 +212,8 @@ def _plot_total_dos(ax,
                     total_dos,
                     c,
                     alpha,
-                    linestyle,
                     linewidth,
+                    linestyle,
                     freq_Debye=None,
                     Debye_fit_coef=None,
                     xlabel=None,
@@ -257,11 +257,22 @@ def total_doses_plot(ax,
                      freq_max=None,
                      freq_pitch=None,
                      use_tetrahedron_method=False,
-                     c=None,
-                     is_trajectory=False,
+                     cs=None,
+                     alphas=None,
+                     linewidths=None,
+                     linestyles=None,
                      draw_grid=True,
                      flip_xy=False,
                      **kwargs):
+    if cs is None:
+        cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(len(phonons)) ]
+    if alphas is None:
+        alphas = [ 1. ] * len(phonons)
+    if linestyles is None:
+        linestyles = [ 'solid' ] * len(phonons)
+    if linewidths is None:
+        linewidths = [ 1. ] * len(phonons)
+
     total_doses = []
     for phonon in phonons:
         phonon.set_mesh(mesh)
@@ -273,53 +284,21 @@ def total_doses_plot(ax,
         total_dos.run()
         total_doses.append(total_dos)
 
-    if is_trajectory:
-        alphas = [ 1. ]
-        linewidths = [ 1.5 ]
-        linestyles = [ 'dashed' ]
-        alphas.extend([ 0.3 for _ in range(len(phonons)-2) ])
-        linewidths.extend([ 1. for _ in range(len(phonons)-2) ])
-        linestyles.extend([ 'dotted' for _ in range(len(phonons)-2) ])
-        alphas.append(1.)
-        linewidths.append(1.5)
-        linestyles.append('solid')
-        if c is None:
-            c = 'r'
-            cs = [ c for _ in range(len(phonons)) ]
-        elif type(c) is list:
-            cs = c
-        else:
-            cs = [ c for _ in range(len(phonons)) ]
-    else:
-        if 'alphas' not in kwargs:
-            alphas = [ 1. ] * len(phonons)
-        else:
-            alphas = kwargs['alphas']
-        if 'cs' not in kwargs:
-            cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(len(phonons)) ]
-        else:
-            cs = kwargs['cs']
-        if 'linestyles' not in kwargs:
-            linestyles = [ 'solid' ] * len(phonons)
-        else:
-            linestyles = kwargs['linestyles']
-        if 'linewidths' not in kwargs:
-            linewidths = [ 1. ] * len(phonons)
-        else:
-            linewidths = kwargs['linewidths']
-
     for i, total_dos in enumerate(total_doses):
         total_dos.plot(ax=ax,
                        c=cs[i],
                        alpha=alphas[i],
-                       linestyle=linestyles[i],
                        linewidth=linewidths[i],
+                       linestyle=linestyles[i],
                        draw_grid=draw_grid,
                        flip_xy=flip_xy,
                        )
 
-class BandsPlot(PhonopyBandPlot):
 
+class BandsPlot(PhonopyBandPlot):
+    """
+    band structure plot class
+    """
     def __init__(self,
                  fig,
                  phonons,
@@ -398,11 +377,11 @@ class BandsPlot(PhonopyBandPlot):
                   npoints):
         for i, phonon in enumerate(self.phonons):
             if i == 0:
-                run_band_calc(phonon=phonon,
-                              band_labels=band_labels,
-                              segment_qpoints=segment_qpoints,
-                              is_auto=is_auto,
-                              npoints=npoints)
+                _run_band_calc(phonon=phonon,
+                               band_labels=band_labels,
+                               segment_qpoints=segment_qpoints,
+                               is_auto=is_auto,
+                               npoints=npoints)
                 base_primitive_matrix = phonon.get_primitive_matrix()
                 qpt = phonon.band_structure.qpoints
                 con = phonon.band_structure.path_connections
@@ -427,11 +406,11 @@ class BandsPlot(PhonopyBandPlot):
                                           segment.T)).T
                     fixed_segment_qpoints.append(fixed_segment)
                 fixed_segment_qpoints = np.array(fixed_segment_qpoints)
-                run_band_calc(phonon=phonon,
-                              band_labels=self.phonons[0].band_structure.labels,
-                              segment_qpoints=fixed_segment_qpoints,
-                              is_auto=False,
-                              npoints=npoints)
+                _run_band_calc(phonon=phonon,
+                               band_labels=self.phonons[0].band_structure.labels,
+                               segment_qpoints=fixed_segment_qpoints,
+                               is_auto=False,
+                               npoints=npoints)
 
         if is_auto:
             self.band_labels = self.phonons[0].band_structure.labels
@@ -439,7 +418,7 @@ class BandsPlot(PhonopyBandPlot):
             self.band_labels = [ decorate_string_for_latex(label) for label in band_labels ]
         self.connections = self.phonons[0].band_structure.path_connections
 
-    def plot_bands(self, **kwargs):
+    def plot_bands(self, cs=None, alphas=None, linestyles=None, linewidths=None):
         """
         plot band, **kwargs is passed for plotting with matplotlib
 
@@ -465,27 +444,14 @@ class BandsPlot(PhonopyBandPlot):
                 if not cn:
                     count += 1
 
-        num = len(self.phonons)
-        if 'cs' in kwargs.keys():
-            assert len(kwargs['cs']) == num
-            cs = kwargs['cs']
-        else:
-            cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(num) ]
-        if 'alphas' in kwargs.keys():
-            assert len(kwargs['alphas']) == num
-            alphas = kwargs['alphas']
-        else:
-            alphas = [1] * num
-        if 'linestyles' in kwargs.keys():
-            assert len(kwargs['linestyles']) == num
-            linestyles = kwargs['linestyles']
-        else:
-            linestyles = ['solid'] * num
-        if 'linewidths' in kwargs.keys():
-            assert len(kwargs['linewidths']) == num
-            linewidths = kwargs['linewidths']
-        else:
-            linewidths = [1] * num
+        if cs is None:
+            cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(len(self.phonons)) ]
+        if alphas is None:
+            alphas = [ 1. ] * len(self.phonons)
+        if linestyles is None:
+            linestyles = [ 'solid' ] * len(self.phonons)
+        if linewidths is None:
+            linewidths = [ 1. ] * len(self.phonons)
 
         for i, phonon in enumerate(self.phonons):
             distances = phonon.band_structure.get_distances()
@@ -518,11 +484,11 @@ class BandsPlot(PhonopyBandPlot):
                     self._axs[-1].axhline(y=0, linestyle=':', linewidth=0.5, color='b')
                     self._axs[-1].set_xlim((0, None))
 
-def run_band_calc(phonon,
-                  band_labels=None,
-                  segment_qpoints=None,
-                  is_auto=False,
-                  npoints=51):
+def _run_band_calc(phonon,
+                   band_labels=None,
+                   segment_qpoints=None,
+                   is_auto=False,
+                   npoints=51):
     if is_auto:
         print("# band path is set automalically")
         phonon.auto_band_structure(plot=False,
@@ -534,13 +500,6 @@ def run_band_calc(phonon,
         qpoints, path_connections = get_band_qpoints_and_path_connections(
                 segment_qpoints, npoints=npoints,
                 rec_lattice=np.linalg.inv(phonon.get_primitive().cell))
-        # phonon.run_band_structure(paths=qpoints,
-        #                           with_eigenvectors=False,
-        #                           with_group_velocities=False,
-        #                           is_band_connection=False,
-        #                           path_connections=path_connections,
-        #                           labels=band_labels,
-        #                           is_legacy_plot=False)
         phonon.run_band_structure(paths=qpoints,
                                   with_eigenvectors=True,
                                   with_group_velocities=False,
@@ -555,26 +514,34 @@ def band_plot(fig,
               band_labels=None,
               segment_qpoints=None,
               is_auto=False,
-              c=None,
-              **kwargs):
+              c='r',
+              alpha=1.,
+              linewidth=1.,
+              linestyle='solid',
+              ):
     bands_plot(fig, [phonon],
                band_labels=band_labels,
                segment_qpoints=segment_qpoints,
                is_auto=is_auto,
                xscale=20,
-               c=None,
-               is_trajectory=False)
+               cs=[c],
+               alphas=[alpha],
+               linewidths=[linewidth],
+               linestyles=[linestyle],
+               )
 
 def bands_plot(fig,
                phonons,
                band_labels=None,
                segment_qpoints=None,
                is_auto=False,
-               is_trajectory=False,
                xscale=20,
-               c=None,
                npoints=51,
-               **kwargs):
+               cs=None,
+               alphas=None,
+               linewidths=None,
+               linestyles=None,
+               ):
     bp = BandsPlot(fig,
                    phonons,
                    band_labels=band_labels,
@@ -582,34 +549,25 @@ def bands_plot(fig,
                    is_auto=is_auto,
                    xscale=xscale,
                    npoints=npoints)
-    if is_trajectory:
-        alphas = [ 1. ]
-        linewidths = [ 1.5 ]
-        linestyles = [ 'dashed' ]
-        alphas.extend([ 0.3 for _ in range(len(phonons)-2) ])
-        linewidths.extend([ 1. for _ in range(len(phonons)-2) ])
-        linestyles.extend([ 'dotted' for _ in range(len(phonons)-2) ])
-        alphas.append(1.)
-        linewidths.append(1.5)
-        linestyles.append('solid')
-        if c is None:
-            c = 'r'
-            cs = [ c for _ in range(len(phonons)) ]
-        elif type(c) is list:
-            cs = c
-        else:
-            cs = [ c for _ in range(len(phonons)) ]
-    else:
-        if 'alphas' not in kwargs:
-            alphas = [ 1. ] * len(phonons)
-        if 'cs' not in kwargs:
-            cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(len(phonons)) ]
-        if 'linestyles' not in kwargs:
-            linestyles = [ 'solid' ] * len(phonons)
-        if 'linewidths' not in kwargs:
-            linewidths = [ 1. ] * len(phonons)
-
     bp.plot_bands(cs=cs,
                   alphas=alphas,
                   linestyles=linestyles,
                   linewidths=linewidths)
+
+def get_plot_properties_from_trajectory(plot_nums:int,
+                                        base_color:str='r'):
+    """
+    arg 'plot_nums' is the number of plots
+    return (cs, alphas, linewidths, linestyles)
+    """
+    alphas = [ 1. ]
+    linewidths = [ 1.5 ]
+    linestyles = [ 'dashed' ]
+    alphas.extend([ 0.3 for _ in range(len(plot_nums)-2) ])
+    linewidths.extend([ 1. for _ in range(len(plot_nums)-2) ])
+    linestyles.extend([ 'dotted' for _ in range(len(plot_nums)-2) ])
+    alphas.append(1.)
+    linewidths.append(1.5)
+    linestyles.append('solid')
+    cs = [ base_color for _ in range(len(plot_nums)) ]
+    return (cs, alphas, linewidths, linestyles)
