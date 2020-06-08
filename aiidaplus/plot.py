@@ -12,6 +12,7 @@ from copy import deepcopy
 from matplotlib import pyplot as plt
 import mpl_toolkits.axes_grid1
 from phonopy.phonon.band_structure import BandPlot as PhonopyBandPlot
+from phonopy.phonon.dos import TotalDos as PhonopyTotalDos
 from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
 from mpl_toolkits.axes_grid1 import ImageGrid
 
@@ -145,6 +146,178 @@ def shift_energy_plot(ax, shifts, energies, natoms, a, b, ev_range=4):
     ax.set_xlabel("y shift [angstrom]")
     ax.set_ylabel("x shift [angstrom]")
 
+
+class TotalDosPlot(PhonopyTotalDos):
+
+    def __init__(self,
+                 ax,
+                 mesh_object,
+                 sigma=None,
+                 use_tetrahedron_method=False,
+                 ):
+        """
+        total dos plot
+
+        Args:
+            sigma : float, optional
+                Smearing width for smearing method. Default is None
+            use_tetrahedron_method : float, optional
+                Use tetrahedron method when this is True. When sigma is set,
+                smearing method is used.
+        """
+        self.ax = ax
+        super().__init__(mesh_object=mesh_object,
+                         sigma=sigma,
+                         use_tetrahedron_method=use_tetrahedron_method)
+
+    def plot(self,
+             ax,
+             c,
+             alpha,
+             linestyle,
+             linewidth,
+             xlabel=None,
+             ylabel=None,
+             draw_grid=True,
+             flip_xy=False):
+        if flip_xy:
+            _xlabel = 'Density of states'
+            _ylabel = 'Frequency'
+        else:
+            _xlabel = 'Frequency'
+            _ylabel = 'Density of states'
+
+        if xlabel is not None:
+            _xlabel = xlabel
+        if ylabel is not None:
+            _ylabel = ylabel
+
+        _plot_total_dos(ax,
+                        self._frequency_points,
+                        self._dos,
+                        c=c,
+                        alpha=alpha,
+                        linestyle=linestyle,
+                        linewidth=linewidth,
+                        freq_Debye=self._freq_Debye,
+                        Debye_fit_coef=self._Debye_fit_coef,
+                        xlabel=_xlabel,
+                        ylabel=_ylabel,
+                        draw_grid=draw_grid,
+                        flip_xy=flip_xy,
+                        )
+
+def _plot_total_dos(ax,
+                    frequency_points,
+                    total_dos,
+                    c,
+                    alpha,
+                    linestyle,
+                    linewidth,
+                    freq_Debye=None,
+                    Debye_fit_coef=None,
+                    xlabel=None,
+                    ylabel=None,
+                    draw_grid=True,
+                    flip_xy=False,
+                    ):
+    ax.xaxis.set_ticks_position('both')
+    ax.yaxis.set_ticks_position('both')
+    ax.xaxis.set_tick_params(which='both', direction='in')
+    ax.yaxis.set_tick_params(which='both', direction='in')
+
+    if freq_Debye is not None:
+        freq_pitch = frequency_points[1] - frequency_points[0]
+        num_points = int(freq_Debye / freq_pitch)
+        freqs = np.linspace(0, freq_Debye, num_points + 1)
+
+    if flip_xy:
+        ax.plot(total_dos, frequency_points, c=c, alpha=alpha, linewidth=linewidth, linestyle=linestyle)
+        if freq_Debye:
+            ax.plot(np.append(Debye_fit_coef * freqs**2, 0),
+                    np.append(freqs, freq_Debye), 'b-', linewidth=1)
+    else:
+        ax.plot(frequency_points, total_dos, c=c, alpha=alpha, linewidth=linewidth, linestyle=linestyle)
+        if freq_Debye:
+            ax.plot(np.append(freqs, freq_Debye),
+                    np.append(Debye_fit_coef * freqs**2, 0), 'b-', linewidth=1)
+
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+
+    ax.grid(draw_grid)
+
+def total_doses_plot(ax,
+                     phonons,
+                     mesh,
+                     sigma=None,
+                     freq_min=None,
+                     freq_max=None,
+                     freq_pitch=None,
+                     use_tetrahedron_method=False,
+                     c=None,
+                     is_trajectory=False,
+                     draw_grid=True,
+                     flip_xy=False,
+                     **kwargs):
+    total_doses = []
+    for phonon in phonons:
+        phonon.set_mesh(mesh)
+        total_dos = TotalDosPlot(ax,
+                                 mesh_object=phonon.mesh,
+                                 sigma=sigma,
+                                 use_tetrahedron_method=use_tetrahedron_method)
+        total_dos.set_draw_area(freq_min, freq_max, freq_pitch)
+        total_dos.run()
+        total_doses.append(total_dos)
+
+    if is_trajectory:
+        alphas = [ 1. ]
+        linewidths = [ 1.5 ]
+        linestyles = [ 'dashed' ]
+        alphas.extend([ 0.3 for _ in range(len(phonons)-2) ])
+        linewidths.extend([ 1. for _ in range(len(phonons)-2) ])
+        linestyles.extend([ 'dotted' for _ in range(len(phonons)-2) ])
+        alphas.append(1.)
+        linewidths.append(1.5)
+        linestyles.append('solid')
+        if c is None:
+            c = 'r'
+            cs = [ c for _ in range(len(phonons)) ]
+        elif type(c) is list:
+            cs = c
+        else:
+            cs = [ c for _ in range(len(phonons)) ]
+    else:
+        if 'alphas' not in kwargs:
+            alphas = [ 1. ] * len(phonons)
+        else:
+            alphas = kwargs['alphas']
+        if 'cs' not in kwargs:
+            cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(len(phonons)) ]
+        else:
+            cs = kwargs['cs']
+        if 'linestyles' not in kwargs:
+            linestyles = [ 'solid' ] * len(phonons)
+        else:
+            linestyles = kwargs['linestyles']
+        if 'linewidths' not in kwargs:
+            linewidths = [ 1. ] * len(phonons)
+        else:
+            linewidths = kwargs['linewidths']
+
+    for i, total_dos in enumerate(total_doses):
+        total_dos.plot(ax=ax,
+                       c=cs[i],
+                       alpha=alphas[i],
+                       linestyle=linestyles[i],
+                       linewidth=linewidths[i],
+                       draw_grid=draw_grid,
+                       flip_xy=flip_xy,
+                       )
+
 class BandsPlot(PhonopyBandPlot):
 
     def __init__(self,
@@ -155,7 +328,9 @@ class BandsPlot(PhonopyBandPlot):
                  is_auto=False,
                  overwrite_phonons=False,
                  xscale=20,
-                 npoints=51):
+                 npoints=51,
+                 with_dos=False,
+                 mesh=None):
         """
         band plot
         """
@@ -168,6 +343,8 @@ class BandsPlot(PhonopyBandPlot):
         self.band_labels = None
         self.connections = None
         self.axes = None
+        self.mesh = mesh
+        self.with_dos = with_dos
         self.npoints = npoints
         self._run_band(band_labels,
                        segment_qpoints,
@@ -200,6 +377,8 @@ class BandsPlot(PhonopyBandPlot):
 
     def _set_axs(self):
         n = len([x for x in self.phonons[0].band_structure.path_connections if not x])
+        if self.with_dos:
+            n += 1
         self.axs = ImageGrid(self.fig, 111,  # similar to subplot(111)
                              nrows_ncols=(1, n),  # n is the number of figures
                              axes_pad=0.11,   # pad between axes in inch.
@@ -320,6 +499,25 @@ class BandsPlot(PhonopyBandPlot):
                 _plot(distances, frequencies, self.connections, is_decorate=False,
                       c=cs[i], alpha=alphas[i], linestyle=linestyles[i], linewidth=linewidths[i])
 
+            if self.with_dos:
+                total_doses_plot(ax=self._axs[-1],
+                                 phonons=self.phonons,
+                                 mesh=self.mesh,
+                                 cs=cs,
+                                 alphas=alphas,
+                                 linewidths=linewidths,
+                                 linestyles=linestyles,
+                                 flip_xy=True,
+                                 draw_grid=False,
+                                 )
+                if i == 0:
+                    xlim = self._axs[-1].get_xlim()
+                    ylim = self._axs[-1].get_ylim()
+                    aspect = (xlim[1] - xlim[0]) / (ylim[1] - ylim[0]) * 3
+                    self._axs[-1].set_aspect(aspect)
+                    self._axs[-1].axhline(y=0, linestyle=':', linewidth=0.5, color='b')
+                    self._axs[-1].set_xlim((0, None))
+
 def run_band_calc(phonon,
                   band_labels=None,
                   segment_qpoints=None,
@@ -402,7 +600,7 @@ def bands_plot(fig,
         else:
             cs = [ c for _ in range(len(phonons)) ]
     else:
-        if 'alpahas' not in kwargs:
+        if 'alphas' not in kwargs:
             alphas = [ 1. ] * len(phonons)
         if 'cs' not in kwargs:
             cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(len(phonons)) ]
