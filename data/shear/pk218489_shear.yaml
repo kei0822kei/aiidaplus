@@ -1,0 +1,161 @@
+calculator_settings:
+    phonon:
+        incar_settings:
+            addgrid: true
+            ediff: 1.0e-08
+            encut: 300
+            gga: PS
+            ialgo: 38
+            ismear: 0
+            lcharg: false
+            lreal: false
+            lwave: false
+            npar: 4
+            prec: Accurate
+            sigma: 0.4
+        kpoints:
+            mesh:
+            - 5
+            - 5
+            - 4
+            offset:
+            - 0
+            - 0
+            - 0.5
+        options:
+            max_wallclock_seconds: 360000
+            queue_name: vega-a
+        phonon_conf:
+            distance: 0.03
+            mesh:
+            - 18
+            - 18
+            - 10
+            supercell_matrix:
+            - 2
+            - 2
+            - 2
+            symmetry_tolerance: 1.0e-05
+        potential_family: PBE.54
+        potential_mapping:
+            Ti: Ti_pv
+        vasp_code: vasp544mpi
+    relax:
+        clean_workdir: true
+        incar_settings:
+            addgrid: true
+            ediff: 1.0e-08
+            encut: 300
+            gga: PS
+            ialgo: 38
+            ismear: 0
+            lcharg: false
+            lreal: false
+            lwave: false
+            npar: 4
+            prec: Accurate
+            sigma: 0.4
+        kpoints:
+            mesh:
+            - 12
+            - 12
+            - 9
+            offset:
+            - 0
+            - 0
+            - 0.5
+        options:
+            max_wallclock_seconds: 360000
+            queue_name: vega-a
+        parser_settings:
+            add_structure: true
+        potential_family: PBE.54
+        potential_mapping:
+            Ti: Ti_pv
+        relax_conf:
+            algo: cg
+            convergence_absolute: false
+            convergence_max_iterations: 20
+            convergence_on: true
+            convergence_positions: 0.0001
+            convergence_shape_angles: 0.1
+            convergence_shape_lengths: 0.1
+            convergence_volume: 0.01
+            force_cutoff: 1.0e-06
+            perform: true
+            positions: true
+            shape: true
+            steps: 20
+            volume: true
+        vasp_code: vasp544mpi
+gamma: 0.18044780445341
+parent:
+    data_type: StructureData
+    hall: -P 6c 2c
+    hall_number: 488
+    international: P6_3/mmc
+    lattice:
+    -   - 2.8936614158124
+        - 0.0
+        - 0.0
+    -   - -1.4468307079062
+        - 2.5059842960443
+        - 0.0
+    -   - 0.0
+        - 0.0
+        - 4.58012747
+    lattice_abc:
+    - 2.8936614158124
+    - 2.893661415812327
+    - 4.58012747
+    lattice_angles:
+    - 90.0
+    - 90.0
+    - 120.00000000000082
+    natoms: 2
+    pk: 218501
+    pointgroup: 6/mmm
+    site_symmetry_symbols:
+    - -6m2
+    - -6m2
+    symprec: 1.0e-05
+    volume: 33.21265724760529
+    wyckoffs:
+    - d
+    - d
+phonon_pks:
+- 219019
+- 219035
+- 219050
+- 219075
+- 219108
+pk: 218489
+relax_pks:
+- 218565
+- 218620
+- 218675
+- 218735
+- 218783
+relax_results:
+    energies:
+    - -16.61128344
+    - -16.59871484
+    - -16.56225083
+    - -16.50595408
+    - -16.42301605
+shear_conf:
+    dim:
+    - 3
+    - 3
+    - 3
+    grids: 5
+    structure_type: primitive
+    twinmode: 10-12
+    xshift: 0.0
+    yshift: 0.0
+shear_ratios:
+- 0.0
+- 0.25
+- 0.5
+- 0.75
+- 1.0

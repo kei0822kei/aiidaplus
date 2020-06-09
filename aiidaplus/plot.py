@@ -511,6 +511,8 @@ def _run_band_calc(phonon,
 
 def band_plot(fig,
               phonon,
+              with_dos=False,
+              mesh=None,
               band_labels=None,
               segment_qpoints=None,
               is_auto=False,
@@ -519,7 +521,10 @@ def band_plot(fig,
               linewidth=1.,
               linestyle='solid',
               ):
-    bands_plot(fig, [phonon],
+    bands_plot(fig,
+               [phonon],
+               with_dos=with_dos,
+               mesh=mesh,
                band_labels=band_labels,
                segment_qpoints=segment_qpoints,
                is_auto=is_auto,
@@ -532,6 +537,8 @@ def band_plot(fig,
 
 def bands_plot(fig,
                phonons,
+               with_dos=False,
+               mesh=None,
                band_labels=None,
                segment_qpoints=None,
                is_auto=False,
@@ -544,6 +551,8 @@ def bands_plot(fig,
                ):
     bp = BandsPlot(fig,
                    phonons,
+                   with_dos=with_dos,
+                   mesh=mesh,
                    band_labels=band_labels,
                    segment_qpoints=segment_qpoints,
                    is_auto=is_auto,
@@ -563,11 +572,11 @@ def get_plot_properties_from_trajectory(plot_nums:int,
     alphas = [ 1. ]
     linewidths = [ 1.5 ]
     linestyles = [ 'dashed' ]
-    alphas.extend([ 0.3 for _ in range(len(plot_nums)-2) ])
-    linewidths.extend([ 1. for _ in range(len(plot_nums)-2) ])
-    linestyles.extend([ 'dotted' for _ in range(len(plot_nums)-2) ])
+    alphas.extend([ 0.3 for _ in range(plot_nums-2) ])
+    linewidths.extend([ 1. for _ in range(plot_nums-2) ])
+    linestyles.extend([ 'dotted' for _ in range(plot_nums-2) ])
     alphas.append(1.)
     linewidths.append(1.5)
     linestyles.append('solid')
-    cs = [ base_color for _ in range(len(plot_nums)) ]
+    cs = [ base_color for _ in range(plot_nums) ]
     return (cs, alphas, linewidths, linestyles)
