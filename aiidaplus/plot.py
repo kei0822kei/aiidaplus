@@ -179,7 +179,9 @@ class TotalDosPlot(PhonopyTotalDos):
              xlabel=None,
              ylabel=None,
              draw_grid=True,
-             flip_xy=False):
+             flip_xy=False,
+             label=None,
+             ):
         if flip_xy:
             _xlabel = 'Density of states'
             _ylabel = 'Frequency'
@@ -205,6 +207,7 @@ class TotalDosPlot(PhonopyTotalDos):
                         ylabel=_ylabel,
                         draw_grid=draw_grid,
                         flip_xy=flip_xy,
+                        label=label,
                         )
 
 def _plot_total_dos(ax,
@@ -220,6 +223,7 @@ def _plot_total_dos(ax,
                     ylabel=None,
                     draw_grid=True,
                     flip_xy=False,
+                    label=None,
                     ):
     ax.xaxis.set_ticks_position('both')
     ax.yaxis.set_ticks_position('both')
@@ -232,12 +236,12 @@ def _plot_total_dos(ax,
         freqs = np.linspace(0, freq_Debye, num_points + 1)
 
     if flip_xy:
-        ax.plot(total_dos, frequency_points, c=c, alpha=alpha, linewidth=linewidth, linestyle=linestyle)
+        ax.plot(total_dos, frequency_points, c=c, alpha=alpha, linewidth=linewidth, linestyle=linestyle, label=label)
         if freq_Debye:
             ax.plot(np.append(Debye_fit_coef * freqs**2, 0),
                     np.append(freqs, freq_Debye), 'b-', linewidth=1)
     else:
-        ax.plot(frequency_points, total_dos, c=c, alpha=alpha, linewidth=linewidth, linestyle=linestyle)
+        ax.plot(frequency_points, total_dos, c=c, alpha=alpha, linewidth=linewidth, linestyle=linestyle, label=label)
         if freq_Debye:
             ax.plot(np.append(freqs, freq_Debye),
                     np.append(Debye_fit_coef * freqs**2, 0), 'b-', linewidth=1)
@@ -263,6 +267,7 @@ def total_doses_plot(ax,
                      linestyles=None,
                      draw_grid=True,
                      flip_xy=False,
+                     labels=None,
                      **kwargs):
     if cs is None:
         cs = [ DEFAULT_COLORS[i%len(DEFAULT_COLORS)] for i in range(len(phonons)) ]
@@ -272,6 +277,8 @@ def total_doses_plot(ax,
         linestyles = [ 'solid' ] * len(phonons)
     if linewidths is None:
         linewidths = [ 1. ] * len(phonons)
+    if labels is None:
+        labels = [None] * len(phonons)
 
     total_doses = []
     for phonon in phonons:
@@ -292,6 +299,7 @@ def total_doses_plot(ax,
                        linestyle=linestyles[i],
                        draw_grid=draw_grid,
                        flip_xy=flip_xy,
+                       label=labels[i]
                        )
 
 
@@ -418,7 +426,7 @@ class BandsPlot(PhonopyBandPlot):
             self.band_labels = [ decorate_string_for_latex(label) for label in band_labels ]
         self.connections = self.phonons[0].band_structure.path_connections
 
-    def plot_bands(self, cs=None, alphas=None, linestyles=None, linewidths=None):
+    def plot_bands(self, cs=None, alphas=None, linestyles=None, linewidths=None, labels=None):
         """
         plot band, **kwargs is passed for plotting with matplotlib
 
@@ -428,9 +436,10 @@ class BandsPlot(PhonopyBandPlot):
             - 'alphas'
             - 'linestyles'
             - 'linewidths'
+            - 'labels'
         """
         def _plot(distances, frequencies, connections, is_decorate,
-                  c, alpha, linestyle, linewidth):
+                  c, alpha, linestyle, linewidth, label):
             count = 0
             distances_scaled = [d * self.xscale for d in distances]
             for d, f, cn in zip(distances_scaled,
@@ -438,7 +447,7 @@ class BandsPlot(PhonopyBandPlot):
                                 connections):
                 ax = self.axs[count]
                 ax.plot(d, f, c=c, alpha=alpha, linestyle=linestyle,
-                             linewidth=linewidth)
+                             linewidth=linewidth, label=label)
                 if is_decorate:
                     ax.axvline(d[-1], c='k', linestyle='dotted', linewidth=0.5)
                 if not cn:
@@ -452,37 +461,64 @@ class BandsPlot(PhonopyBandPlot):
             linestyles = [ 'solid' ] * len(self.phonons)
         if linewidths is None:
             linewidths = [ 1. ] * len(self.phonons)
+        if labels is None:
+            labels = [ None ] * len(self.phonons)
 
         for i, phonon in enumerate(self.phonons):
             distances = phonon.band_structure.get_distances()
             frequencies = phonon.band_structure.get_frequencies()
             if i == 0:
                 _plot(distances, frequencies, self.connections, is_decorate=True,
-                      c=cs[i], alpha=alphas[i], linestyle=linestyles[i], linewidth=linewidths[i])
+                      c=cs[i], alpha=alphas[i], linestyle=linestyles[i], linewidth=linewidths[i], label=labels[i])
                 base_distances = deepcopy(distances)
             else:
                 distances = self._revise_distances(distances, base_distances)
                 _plot(distances, frequencies, self.connections, is_decorate=False,
-                      c=cs[i], alpha=alphas[i], linestyle=linestyles[i], linewidth=linewidths[i])
+                      c=cs[i], alpha=alphas[i], linestyle=linestyles[i], linewidth=linewidths[i], label=labels[i])
 
             if self.with_dos:
-                total_doses_plot(ax=self._axs[-1],
-                                 phonons=self.phonons,
-                                 mesh=self.mesh,
-                                 cs=cs,
-                                 alphas=alphas,
-                                 linewidths=linewidths,
-                                 linestyles=linestyles,
-                                 flip_xy=True,
-                                 draw_grid=False,
-                                 )
+                # total_doses_plot(ax=self._axs[-1],
+                #                  phonons=self.phonons,
+                #                  mesh=self.mesh,
+                #                  cs=cs,
+                #                  alphas=alphas,
+                #                  linewidths=linewidths,
+                #                  linestyles=linestyles,
+                #                  flip_xy=True,
+                #                  draw_grid=False,
+                #                  labels=labels,
+                #                  )
                 if i == 0:
+                    total_doses_plot(ax=self._axs[-1],
+                                     phonons=self.phonons,
+                                     mesh=self.mesh,
+                                     cs=cs,
+                                     alphas=alphas,
+                                     linewidths=linewidths,
+                                     linestyles=linestyles,
+                                     flip_xy=True,
+                                     draw_grid=False,
+                                     labels=labels,
+                                     )
                     xlim = self._axs[-1].get_xlim()
                     ylim = self._axs[-1].get_ylim()
                     aspect = (xlim[1] - xlim[0]) / (ylim[1] - ylim[0]) * 3
                     self._axs[-1].set_aspect(aspect)
                     self._axs[-1].axhline(y=0, linestyle=':', linewidth=0.5, color='b')
                     self._axs[-1].set_xlim((0, None))
+                else:
+                    total_doses_plot(ax=self._axs[-1],
+                                     phonons=self.phonons,
+                                     mesh=self.mesh,
+                                     cs=cs,
+                                     alphas=alphas,
+                                     linewidths=linewidths,
+                                     linestyles=linestyles,
+                                     flip_xy=True,
+                                     draw_grid=False,
+                                     labels=None,
+                                     )
+        self._axs[-1].legend()
 
 def _run_band_calc(phonon,
                    band_labels=None,
@@ -533,6 +569,7 @@ def band_plot(fig,
                alphas=[alpha],
                linewidths=[linewidth],
                linestyles=[linestyle],
+               labels=None,
                )
 
 def bands_plot(fig,
@@ -548,6 +585,7 @@ def bands_plot(fig,
                alphas=None,
                linewidths=None,
                linestyles=None,
+               labels=None,
                ):
     bp = BandsPlot(fig,
                    phonons,
@@ -561,7 +599,8 @@ def bands_plot(fig,
     bp.plot_bands(cs=cs,
                   alphas=alphas,
                   linestyles=linestyles,
-                  linewidths=linewidths)
+                  linewidths=linewidths,
+                  labels=labels)
 
 def get_plot_properties_from_trajectory(plot_nums:int,
                                         base_color:str='r'):

@@ -11,6 +11,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.phonopy import get_phonopy_structure
 from aiida.orm import load_node, QueryBuilder, Node, WorkChainNode, StructureData
 from aiida.common import exceptions
+from aiida.common import NotExistentAttributeError
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.plugins import WorkflowFactory
 from phonopy import Phonopy
@@ -164,6 +165,14 @@ def get_relax_data(pk, symprec=1e-5) -> dict:
     dic['final_energy_no_entropy'] = \
         node.outputs.misc.get_dict()['total_energies']['energy_no_entropy']
     dic['steps'] = vasp_results
+    try:
+        dic['max_force'] = float(np.linalg.norm(node.outputs.forces.get_array('final'), axis=1).max())
+    except NotExistentAttributeError:
+        print("outputs forces is not exists in relax pk:{}".format(pk))
+    try:
+        dic['stress'] = node.outputs.stress.get_array('final').tolist()
+    except NotExistentAttributeError:
+        print("outputs forces is not exists in relax pk:{}".format(pk))
 
     return dic
 
@@ -229,22 +238,38 @@ def get_shear_data(pk):
 
     return dic
 
-def get_twinboundary_data(pk):
+def get_twinboundary_relax_data(pk):
     """
-    get twinboudnary data
+    get twinboudnary relax data
     """
     # get called pks
     node = load_node(pk)
-    qb = QueryBuilder()
-    qb.append(Node, filters={'id':{'==': pk}})
-    qb.append(WorkChainNode, tag='workchain')
-    qb.append(StructureData, with_outgoing='workchain', project=['id', 'label'])
-    structure_pks = qb.all()
-    structure_pks = list(reversed(structure_pks))
-
+    rlx_qb = QueryBuilder()
+    rlx_qb.append(Node, filters={'id':{'==': pk}}, tag='wf')
+    rlx_qb.append(RELAX_WF, with_incoming='wf', project=['label', 'id'])
+    relaxes = rlx_qb.all()
     dic = {}
-    dic['twinboudnary_summary'] = node.outputs.twinboundary_summary.get_dict()
-    dic['structure_pks'] = structure_pks
-    dic['vasp_results'] = node.outputs.vasp_results.get_dict()
+    dic['relax_pks'] = [ relax[1] for relax in relaxes ]
+    dic['relax_pks'].sort()
 
     return dic
+
+# def get_twinboundary_data(pk):
+#     """
+#     get twinboudnary data
+#     """
+#     # get called pks
+#     node = load_node(pk)
+#     qb = QueryBuilder()
+#     qb.append(Node, filters={'id':{'==': pk}})
+#     qb.append(WorkChainNode, tag='workchain')
+#     qb.append(StructureData, with_outgoing='workchain', project=['id', 'label'])
+#     structure_pks = qb.all()
+#     structure_pks = list(reversed(structure_pks))
+# 
+#     dic = {}
+#     dic['twinboudnary_summary'] = node.outputs.twinboundary_summary.get_dict()
+#     dic['structure_pks'] = structure_pks
+#     dic['vasp_results'] = node.outputs.vasp_results.get_dict()
+# 
+#     return dic

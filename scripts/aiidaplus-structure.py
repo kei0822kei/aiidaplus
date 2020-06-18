@@ -10,7 +10,9 @@ import argparse
 from pprint import pprint
 from aiida.cmdline.utils.decorators import with_dbenv
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.io.phonopy import get_pmg_structure
 from aiidaplus.get_data import get_structure_data_from_pymatgen
+from twinpy.structure.base import get_phonopy_structure
 
 # argparse
 def get_argparse():
@@ -96,6 +98,12 @@ def get_pmgstructure(filename, filetype, symprec):
         raise ValueError("specified filetype is not supported")
     return pmgstruct
 
+def get_cell_from_pmgstructure(pmgstructure):
+    lattice = pmgstructure.lattice.matrix
+    scaled_positions = pmgstructure.frac_coords
+    symbols = [ specie.value for specie in pmgstructure.species ]
+    return (lattice, scaled_positions, symbols)
+
 def export_structure(pmgstruct, filetype):
     structure_filename = {
             'poscar': 'POSCAR',
@@ -136,16 +144,34 @@ def import_to_aiida(pmgstruct, label, description, group=None):
         print("structure {0} has added to group '{1}'".format(
             structure.pk, group))
 
-def standardize_structure(pmgstruct, primitive, conventional, symprec):
-    struct_analyzer = SpacegroupAnalyzer(pmgstruct, symprec=symprec)
-    if primitive:
-        print("primitive standardizing structure\n")
-        structure = struct_analyzer.get_primitive_standard_structure()
-    elif conventional:
-        print("conventional standardizing structure\n")
-        structure = struct_analyzer.get_conventional_standard_structure()
-    else:
-        raise ValueError("some unexpected error occured, check code!")
+def standardize_structure(pmgstruct,
+                          primitive,
+                          conventional,
+                          symprec,
+                          engine='phonopy'):
+    if engine == 'pymatgen':
+        struct_analyzer = SpacegroupAnalyzer(pmgstruct, symprec=symprec)
+        if primitive:
+            print("primitive standardizing structure\n")
+            structure = struct_analyzer.get_primitive_standard_structure()
+        elif conventional:
+            print("conventional standardizing structure\n")
+            structure = struct_analyzer.get_conventional_standard_structure()
+        else:
+            raise ValueError("some unexpected error occured, check code!")
+    elif engine == 'phonopy':
+        cell = get_cell_from_pmgstructure(pmgstruct)
+        if primitive:
+            structure_type = 'primitive'
+        elif conventional:
+            structure_type = 'conventional'
+        else:
+            structure_type = 'base'
+        ph_structure = get_phonopy_structure(cell=cell,
+                                             structure_type=structure_type,
+                                             symprec=symprec)
+        structure = get_pmg_structure(ph_structure)
+
     return structure
 
 @with_dbenv()

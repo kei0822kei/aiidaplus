@@ -19,7 +19,9 @@ from aiidaplus.get_data import (get_structure_data,
                                 get_relax_data,
                                 get_phonon_data,
                                 get_shear_data,
-                                get_twinboundary_data)
+                                # get_twinboundary_data,
+                                get_twinboundary_relax_data,
+                                )
 from aiidaplus.utils import get_kpoints
 from aiidaplus import plot as aiidaplot
 
@@ -37,6 +39,8 @@ def get_argparse():
         help="show the detailed information of data")
     parser.add_argument('--ev_range', type=float, default=4.,
         help="eV range when sheft energy plot is activated")
+    parser.add_argument('--ymax', type=float, default=None,
+        help="fig ymax")
     args = parser.parse_args()
     return args
 
@@ -111,6 +115,27 @@ def _export_structure(pk, get_data, show):
             pprint(data[key])
     if get_data:
         filename = 'pk'+str(pk)+'_structure.yaml'
+        dic2yaml(data, filename)
+
+def _export_twinboundary_relax(pk, get_data, show, ymax):
+    data = get_twinboundary_relax_data(pk)
+    if show:
+        max_forces = [ get_relax_data(relax_pk)['max_force'] for relax_pk in data['relax_pks'] ]
+        steps = [ i+1 for i in range(len(max_forces)) ]
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        aiidaplot.line_chart(ax,
+                             xdata=steps,
+                             ydata=max_forces,
+                             xlabel='steps',
+                             ylabel='max force on atom')
+        ax.set_ylim(0., ymax)
+        plt.title("twinboudnary relax: max force acting on atom")
+        plt.show()
+
+    if get_data:
+        filename = 'pk'+str(pk)+'_twinboundary_relax.yaml'
         dic2yaml(data, filename)
 
 def _export_twinboundary(pk, get_data, show, ev_range=4.):
@@ -264,7 +289,7 @@ def _export_relax(pk, get_data, show):
         plt.show()
 
 @with_dbenv()
-def main(pk, get_data=False, show=False, ev_range=4.):
+def main(pk, get_data=False, show=False, ev_range=4., ymax=None):
     """
     export specified pk data
 
@@ -299,8 +324,10 @@ def main(pk, get_data=False, show=False, ev_range=4.):
             _export_phonon(pk, get_data, show)
         elif workchain_name == 'ShearWorkChain':
             _export_shear(pk, get_data, show)
-        elif workchain_name == 'TwinBoundaryWorkChain':
-            _export_twinboundary(pk, get_data, show, ev_range)
+        # elif workchain_name == 'TwinBoundaryWorkChain':
+        #     _export_twinboundary(pk, get_data, show, ev_range)
+        elif workchain_name == 'TwinBoundaryRelaxWorkChain':
+            _export_twinboundary_relax(pk, get_data, show, ymax)
         elif workchain_name == 'TwinBoundaryShearWorkChain':
             _export_twinboundary_shear(pk, get_data, show)
         else:
@@ -311,4 +338,4 @@ def main(pk, get_data=False, show=False, ev_range=4.):
 
 if __name__ == '__main__':
     args = get_argparse()
-    main(args.node_pk, args.get_data, args.show, args.ev_range)
+    main(args.node_pk, args.get_data, args.show, args.ev_range, args.ymax)
