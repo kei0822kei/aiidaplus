@@ -7,12 +7,18 @@ This script deals with structure
 """
 
 import argparse
+import warnings
+import numpy as np
 from pprint import pprint
 from aiida.cmdline.utils.decorators import with_dbenv
+from phonopy.structure.atoms import symbol_map, atom_data
+from phonopy.interface.vasp import sort_positions_by_symbols
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.core.structure import Structure
 from pymatgen.io.phonopy import get_pmg_structure
 from aiidaplus.get_data import get_structure_data_from_pymatgen
 from twinpy.structure.base import get_phonopy_structure
+import spglib
 
 # argparse
 def get_argparse():
@@ -42,6 +48,8 @@ def get_argparse():
         help="if True, get conventinoal structure")
     parser.add_argument('--primitive', action='store_true',
         help="if True, get primitive strucutre")
+    parser.add_argument('--sort_by_symbols', action='store_true',
+        help="sort atoms by symbols")
     parser.add_argument('--show', action='store_true',
         help="get description about structure")
     parser.add_argument('--symprec', type=float, default=1e-5,
@@ -98,6 +106,20 @@ def get_pmgstructure(filename, filetype, symprec):
         raise ValueError("specified filetype is not supported")
     return pmgstruct
 
+def get_atomic_numbers(symbols):
+    """
+    get atomic numbers from symbols
+    """
+    numbers = [ symbol_map[symbol] for symbol in symbols ]
+    return numbers
+
+def get_chemical_symbols(numbers):
+    """
+    get chemical symbols from atomic numbers
+    """
+    symbols = [ atom_data[num][0] for num in numbers ]
+    return symbols
+
 def get_cell_from_pmgstructure(pmgstructure):
     lattice = pmgstructure.lattice.matrix
     scaled_positions = pmgstructure.frac_coords
@@ -145,32 +167,53 @@ def import_to_aiida(pmgstruct, label, description, group=None):
             structure.pk, group))
 
 def standardize_structure(pmgstruct,
-                          primitive,
-                          conventional,
+                          structure_type,
                           symprec,
+                          sort_by_symbols=False,
                           engine='phonopy'):
+    """
+    structure_type = 'primitive' or 'conventional'
+    sort_by_symbols: if True, sort symbols and scaled_positions
+    in order to make 'Al' 'O' 'Si' 'Al' 'O' 'Si' to 'Al' 'O' 'Si'
+    """
+    assert structure_type in ['primitive', 'conventional'], \
+            "structure_type must be 'primitive' or 'conventional'"
     if engine == 'pymatgen':
         struct_analyzer = SpacegroupAnalyzer(pmgstruct, symprec=symprec)
-        if primitive:
+        if structure_type == 'primitivie':
             print("primitive standardizing structure\n")
             structure = struct_analyzer.get_primitive_standard_structure()
-        elif conventional:
+        else:
             print("conventional standardizing structure\n")
             structure = struct_analyzer.get_conventional_standard_structure()
-        else:
-            raise ValueError("some unexpected error occured, check code!")
     elif engine == 'phonopy':
         cell = get_cell_from_pmgstructure(pmgstruct)
-        if primitive:
-            structure_type = 'primitive'
-        elif conventional:
-            structure_type = 'conventional'
+        numbers = get_atomic_numbers(cell[2])
+        cell_spglib = (cell[0], cell[1], numbers)
+
+        if structure_type == 'primitive':
+            to_primitive = True
         else:
-            structure_type = 'base'
-        ph_structure = get_phonopy_structure(cell=cell,
-                                             structure_type=structure_type,
-                                             symprec=symprec)
-        structure = get_pmg_structure(ph_structure)
+            to_primitive = False
+        std_cell = spglib.standardize_cell(cell=cell_spglib,
+                                           to_primitive=to_primitive,
+                                           symprec=symprec)
+        if sort_by_symbols:
+            posi_orig = std_cell[1]
+            num_atoms, unique_symbols, scaled_positions, _ = \
+                sort_positions_by_symbols(symbols=get_chemical_symbols(std_cell[2]),
+                                          positions=std_cell[1])
+            symbols = []
+            for num, symbol in zip(num_atoms, unique_symbols):
+                symbols.extend([symbol] * num)
+
+            if not np.allclose(posi_orig, scaled_positions):
+                warnings.warn("atoms order has changed")
+            std_cell = (std_cell[0], scaled_positions, symbols)
+
+        structure = Structure(lattice=std_cell[0],
+                              coords=std_cell[1],
+                              species=std_cell[2])
 
     return structure
 
@@ -188,11 +231,22 @@ def main(filename,
          show,
          label,
          description,
+         sort_by_symbols,
          symprec):
 
     pmgstruct = get_pmgstructure(filename, filetype, symprec)
-    if primitive or conventional:
-        pmgstruct = standardize_structure(pmgstruct, primitive, conventional, symprec)
+
+    if primitive:
+        pmgstruct = standardize_structure(pmgstruct=pmgstruct,
+                                          structure_type='primitive',
+                                          sort_by_symbols=sort_by_symbols,
+                                          symprec=symprec,)
+    if conventional:
+        pmgstruct = standardize_structure(pmgstruct=pmgstruct,
+                                          structure_type='conventional',
+                                          sort_by_symbols=sort_by_symbols,
+                                          symprec=symprec)
+
     if show:
         get_description(pmgstruct, symprec)
     if get_cif:
@@ -224,4 +278,5 @@ if __name__ == '__main__':
          show=args.show,
          label=args.label,
          description=args.description,
+         sort_by_symbols=args.sort_by_symbols,
          symprec=args.symprec)
