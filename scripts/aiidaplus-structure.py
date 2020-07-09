@@ -48,8 +48,8 @@ def get_argparse():
         help="if True, get conventinoal structure")
     parser.add_argument('--primitive', action='store_true',
         help="if True, get primitive strucutre")
-    parser.add_argument('--sort_by_symbols', action='store_true',
-        help="sort atoms by symbols")
+    parser.add_argument('--no_sort', action='store_true',
+        help="does not sort atoms by symbols")
     parser.add_argument('--show', action='store_true',
         help="get description about structure")
     parser.add_argument('--symprec', type=float, default=1e-5,
@@ -169,11 +169,11 @@ def import_to_aiida(pmgstruct, label, description, group=None):
 def standardize_structure(pmgstruct,
                           structure_type,
                           symprec,
-                          sort_by_symbols=False,
+                          no_sort=False,
                           engine='phonopy'):
     """
     structure_type = 'primitive' or 'conventional'
-    sort_by_symbols: if True, sort symbols and scaled_positions
+    no_sort: if True, sort symbols and scaled_positions
     in order to make 'Al' 'O' 'Si' 'Al' 'O' 'Si' to 'Al' 'O' 'Si'
     """
     assert structure_type in ['primitive', 'conventional'], \
@@ -198,7 +198,7 @@ def standardize_structure(pmgstruct,
         std_cell = spglib.standardize_cell(cell=cell_spglib,
                                            to_primitive=to_primitive,
                                            symprec=symprec)
-        if sort_by_symbols:
+        if not no_sort:
             posi_orig = std_cell[1]
             num_atoms, unique_symbols, scaled_positions, _ = \
                 sort_positions_by_symbols(symbols=get_chemical_symbols(std_cell[2]),
@@ -207,8 +207,6 @@ def standardize_structure(pmgstruct,
             for num, symbol in zip(num_atoms, unique_symbols):
                 symbols.extend([symbol] * num)
 
-            if not np.allclose(posi_orig, scaled_positions):
-                warnings.warn("atoms order has changed")
             std_cell = (std_cell[0], scaled_positions, symbols)
 
         structure = Structure(lattice=std_cell[0],
@@ -231,7 +229,7 @@ def main(filename,
          show,
          label,
          description,
-         sort_by_symbols,
+         no_sort,
          symprec):
 
     pmgstruct = get_pmgstructure(filename, filetype, symprec)
@@ -239,12 +237,12 @@ def main(filename,
     if primitive:
         pmgstruct = standardize_structure(pmgstruct=pmgstruct,
                                           structure_type='primitive',
-                                          sort_by_symbols=sort_by_symbols,
+                                          no_sort=no_sort,
                                           symprec=symprec,)
     if conventional:
         pmgstruct = standardize_structure(pmgstruct=pmgstruct,
                                           structure_type='conventional',
-                                          sort_by_symbols=sort_by_symbols,
+                                          no_sort=no_sort,
                                           symprec=symprec)
 
     if show:
@@ -278,5 +276,5 @@ if __name__ == '__main__':
          show=args.show,
          label=args.label,
          description=args.description,
-         sort_by_symbols=args.sort_by_symbols,
+         no_sort=args.no_sort,
          symprec=args.symprec)
