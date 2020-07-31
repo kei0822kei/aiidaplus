@@ -17,7 +17,6 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.core.structure import Structure
 from pymatgen.io.phonopy import get_pmg_structure
 from aiidaplus.get_data import get_structure_data_from_pymatgen
-from twinpy.structure.base import get_phonopy_structure
 import spglib
 
 # argparse
@@ -199,7 +198,6 @@ def standardize_structure(pmgstruct,
                                            to_primitive=to_primitive,
                                            symprec=symprec)
         if not no_sort:
-            posi_orig = std_cell[1]
             num_atoms, unique_symbols, scaled_positions, _ = \
                 sort_positions_by_symbols(symbols=get_chemical_symbols(std_cell[2]),
                                           positions=std_cell[1])

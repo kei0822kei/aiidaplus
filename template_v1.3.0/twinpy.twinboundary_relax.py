@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 
 import argparse
+from copy import deepcopy
 from aiida.plugins import WorkflowFactory
 from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import submit
-from aiida.orm import load_node, Bool, Code, Dict, Group, Str, KpointsData
-from aiidaplus.utils import (get_default_potcar_mapping,
-                             get_elements_from_aiidastructure,
-                             get_encut)
+from aiida.orm import (load_node, Dict,
+                       Group, Int, Str)
+from aiidaplus.get_data import get_relax_data
 
 
 def get_argparse():
@@ -36,111 +35,69 @@ def get_argparse():
 
 args = get_argparse()
 
-
-@with_dbenv()
-def get_elements(pk):
-    node = load_node(pk)
-    elements = get_elements_from_aiidastructure(node)
-    return elements
+# ----------
+# relax data
+# ----------
+relax_pk = 231346  # aiida
+data = get_relax_data(relax_pk)
 
 
 # ---------------
 # common settings
 # ---------------
-wf = 'vasp.vasp'
-max_wallclock_seconds = 36000
-label = "this is label"
-description = "this is description"
+wf = 'twinpy.twinboundary_relax'
+label = "twinpy twinboundary relax calc using relax result (pk: {})".format(
+        relax_pk)
+description = label
+max_wallclock_seconds = 100 * 3600
 clean_workdir = True
 
 
 # ---------
 # structure
 # ---------
-# structure_pk = 3932
-structure_pk = 1250  # Ti_c, aiida
-# structure_pk = 17026 # glass
-elements = get_elements(structure_pk)
+structure_pk = data['final_structure_pk']
 
 
 # ------
 # potcar
 # ------
-potential_family = 'PBE.54'
-potential_mapping = get_default_potcar_mapping(elements)
-# potential_mapping = {
-#         'Na': 'Na',
-#         'Cl': 'Cl'
-#         }
+potential_family = data['steps']['step_00']['potential_family']
+potential_mapping = data['steps']['step_00']['potential_mapping']
 
 
 # -----
 # incar
 # -----
+incar_settings = data['steps']['step_00']['incar']
+incar_settings['ediff'] = 1e-07
+del incar_settings['relax']
 
-# ============
-# base setting
-# ============
-incar_settings = {
-    'addgrid': True,
-    'ediff': 1e-6,
-    'gga': 'PS',
-    'ialgo': 38,
-    'lcharg': False,
-    'lreal': False,
-    'lwave': False,
-    'npar': 4,
-    'prec': 'Accurate',
+
+# --------------
+# relax settings
+# --------------
+relax_conf = {
+    'algo': 'rd',  # default 'cg'
+    'steps': 20,
+    'positions': True,
+    'volume': False,
+    'shape': False,
+    'convergence_absolute': False,
+    'convergence_max_iterations': 2,
+    'convergence_on': True,
+    'convergence_positions': 0.1,
+    'force_cutoff': 1e-8,
     }
-
-# =====
-# encut
-# =====
-# encut = 300
-encut = get_encut(potential_family=potential_family,
-                  potential_mapping=potential_mapping,
-                  multiply=1.3)
-
-incar_settings['encut'] = encut
-
-# =====
-# smear
-# =====
-# -- metal
-smearing_settings = {
-    'ismear': 1,
-    'sigma': 0.4
-    }
-
-# -- not metal
-# smearing_settings = {
-#     'ismear': 0,
-#     'sigma': 0.01
-#     }
-
-incar_settings.update(smearing_settings)
-
-# =====
-# relax
-# =====
-# -- if relax
-relax_settings = {
-    'nsw': 40,
-    'ibrion': 2,
-    'isif': 3,
-    'ediffg': -1e-4
-    }
-
-incar_settings.update(relax_settings)
 
 
 # ---------------
 # parser settings
 # ---------------
+# -- 'add_structure': True is automatically set
 parser_settings = {
     'add_misc': True,
     'add_kpoints': True,
-    'add_structure': True,
     'add_energies': True,
     'add_forces': True,
     'add_stress': True,
@@ -161,13 +118,29 @@ parser_settings = {
     # 'add_wavecar': False,
 }
 
+
 # -------
 # kpoints
 # -------
 kpoints = {
-    'mesh': [8, 8, 6],
-    'offset': [0., 0., 0.5],
+    'mesh': ['check carefully'],
+    'offset': [0.5, 0.5, 0.5]
     }
+
+
+# ---------------------
+# twinpy shear settings
+# ---------------------
+twinboundary_relax_conf = {
+    'twinmode': '10-12',
+    'twintype': 1,
+    'xshift': 0.,
+    'yshift': 0.,
+    'dim': [1, 1, 2],
+    'shear_strain_ratio': 0.,
+    'make_tb_flat': True,
+    }
+relax_times = 40
 
 
 def check_group_existing(group):
@@ -191,9 +164,7 @@ def main(computer,
     # common settings
     workflow = WorkflowFactory(wf)
     builder = workflow.get_builder()
-    builder.code = Code.get_from_string('{}@{}'.format('vasp544mpi', computer))
-    builder.clean_workdir = Bool(clean_workdir)
-    builder.verbose = Bool(True)
+    builder.computer = Str(computer)
 
     # label and descriptions
     if cmd_label is None:
@@ -202,39 +173,33 @@ def main(computer,
         builder.metadata.label = cmd_label
     builder.metadata.description = description
 
-    # options
-    options = AttributeDict()
-    options.account = ''
-    options.qos = ''
-    options.resources = {
-            'tot_num_mpiprocs': 16,
-            # 'num_machines': 1,  # occur an error, probably unnecessary.
-            'parallel_env': 'mpi*'
-            }
-    options.queue_name = queue
-    options.max_wallclock_seconds = max_wallclock_seconds
-    builder.options = Dict(dict=options)
-
     # structure
     builder.structure = load_node(structure_pk)
 
-    # incar
-    builder.parameters = Dict(dict=incar_settings)
+    # twinpy settings
+    builder.twinboundary_relax_conf = Dict(dict=twinboundary_relax_conf)
 
-    # parser settings
-    builder.settings = Dict(dict={'parser_settings': parser_settings})
-
-    # kpoints
-    kpt = KpointsData()
-    kpt.set_kpoints_mesh(kpoints['mesh'], offset=kpoints['offset'])
-    builder.kpoints = kpt
-
-    # potcar
-    builder.potential_family = Str(potential_family)
-    builder.potential_mapping = Dict(dict=potential_mapping)
+    # vasp settings
+    base_settings = {
+            'vasp_code': 'vasp544mpi',
+            'incar_settings': incar_settings,
+            'potential_family': potential_family,
+            'potential_mapping': potential_mapping,
+            }
+    relax_settings = deepcopy(base_settings)
+    relax_settings.update({
+        'kpoints': {'mesh': kpoints['mesh'], 'offset': kpoints['offset']},
+        'options': {'queue_name': queue,
+                    'max_wallclock_seconds': max_wallclock_seconds},
+        'relax_conf': relax_conf,
+        'clean_workdir': clean_workdir,
+        'parser_settings': parser_settings,
+        })
+    builder.calculator_settings = Dict(dict={'relax': relax_settings})
+    builder.relax_times = Int(relax_times)
 
     # submit
-    future = submit(workflow, **builder)
+    future = submit(builder)
     print(future)
     print('Running workchain with pk={}'.format(future.pk))
 
@@ -250,4 +215,4 @@ if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
          group=args.group,
-         cmd_label=args.label)
+         cmd_label=args.cmd_label)

@@ -5,7 +5,8 @@ from aiida.plugins import WorkflowFactory
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import submit
-from aiida.orm import load_node, Bool, Code, Dict, Group, Str, KpointsData
+from aiida.orm import (load_node, Bool, Code, Dict, Float,
+                       Group, Int, Str, KpointsData)
 from aiidaplus.utils import (get_default_potcar_mapping,
                              get_elements_from_aiidastructure,
                              get_encut)
@@ -47,7 +48,7 @@ def get_elements(pk):
 # ---------------
 # common settings
 # ---------------
-wf = 'vasp.vasp'
+wf = 'vasp.relax'
 max_wallclock_seconds = 36000
 label = "this is label"
 description = "this is description"
@@ -57,9 +58,9 @@ clean_workdir = True
 # ---------
 # structure
 # ---------
-# structure_pk = 3932
+# structure_pk = 30347  # AgBr
+# structure_pk = 4545  # for glass, Ne
 structure_pk = 1250  # Ti_c, aiida
-# structure_pk = 17026 # glass
 elements = get_elements(structure_pk)
 
 
@@ -83,7 +84,7 @@ potential_mapping = get_default_potcar_mapping(elements)
 # ============
 incar_settings = {
     'addgrid': True,
-    'ediff': 1e-6,
+    'ediff': 1e-8,
     'gga': 'PS',
     'ialgo': 38,
     'lcharg': False,
@@ -120,27 +121,35 @@ smearing_settings = {
 
 incar_settings.update(smearing_settings)
 
-# =====
-# relax
-# =====
-# -- if relax
-relax_settings = {
-    'nsw': 40,
-    'ibrion': 2,
-    'isif': 3,
-    'ediffg': -1e-4
-    }
 
-incar_settings.update(relax_settings)
+# --------------
+# relax_settings
+# --------------
+relax_conf = {
+    'perform': True,
+    'positions': True,
+    'volume': True,
+    'shape': True,
+    'algo': 'rd',  # default: 'cg'
+    'steps': 40,
+    'convergence_absolute': False,
+    'convergence_max_iterations': 2,
+    'convergence_on': True,
+    'convergence_positions': 0.01,
+    'convergence_shape_angles': 0.1,
+    'convergence_shape_lengths': 0.1,
+    'convergence_volume': 0.01,
+    'force_cutoff': 1e-7,  # or 'energy_cutoff': 1e-4,
+    }
 
 
 # ---------------
 # parser settings
 # ---------------
+# -- 'add_structure': True is automatically set
 parser_settings = {
     'add_misc': True,
     'add_kpoints': True,
-    'add_structure': True,
     'add_energies': True,
     'add_forces': True,
     'add_stress': True,
@@ -166,7 +175,7 @@ parser_settings = {
 # -------
 kpoints = {
     'mesh': [8, 8, 6],
-    'offset': [0., 0., 0.5],
+    'offset': [0, 0, 0.5]
     }
 
 
@@ -220,6 +229,56 @@ def main(computer,
 
     # incar
     builder.parameters = Dict(dict=incar_settings)
+
+    # relax
+    relax_attribute = AttributeDict()
+    keys = relax_conf.keys()
+    if 'perform' in keys:
+        relax_attribute.perform = \
+                Bool(relax_conf['perform'])
+    if 'positions' in keys:
+        relax_attribute.positions = \
+                Bool(relax_conf['positions'])
+    if 'volume' in keys:
+        relax_attribute.volume = \
+                Bool(relax_conf['volume'])
+    if 'shape' in keys:
+        relax_attribute.shape = \
+                Bool(relax_conf['shape'])
+    if 'algo' in keys:
+        relax_attribute.algo = \
+                Str(relax_conf['algo'])
+    if 'steps' in keys:
+        relax_attribute.steps = \
+                Int(relax_conf['steps'])
+    if 'convergence_absolute' in keys:
+        relax_attribute.convergence_absolute = \
+                Bool(relax_conf['convergence_absolute'])
+    if 'convergence_max_iterations' in keys:
+        relax_attribute.convergence_max_iterations = \
+                Int(relax_conf['convergence_max_iterations'])
+    if 'convergence_on' in keys:
+        relax_attribute.convergence_on = \
+                Bool(relax_conf['convergence_on'])
+    if 'convergence_positions' in keys:
+        relax_attribute.convergence_positions = \
+                Float(relax_conf['convergence_positions'])
+    if 'convergence_shape_angles' in keys:
+        relax_attribute.convergence_shape_angles = \
+                Float(relax_conf['convergence_shape_angles'])
+    if 'convergence_shape_lengths' in keys:
+        relax_attribute.convergence_shape_lengths = \
+                Float(relax_conf['convergence_shape_lengths'])
+    if 'convergence_volume' in keys:
+        relax_attribute.convergence_volume = \
+                Float(relax_conf['convergence_volume'])
+    if 'force_cutoff' in keys:
+        relax_attribute.force_cutoff = \
+                Float(relax_conf['force_cutoff'])
+    if 'energy_cutoff' in keys:
+        relax_attribute.energy_cutoff = \
+                Float(relax_conf['energy_cutoff'])
+    builder.relax = relax_attribute
 
     # parser settings
     builder.settings = Dict(dict={'parser_settings': parser_settings})

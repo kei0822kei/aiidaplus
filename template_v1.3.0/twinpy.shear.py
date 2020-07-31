@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import argparse
+from copy import deepcopy
 from aiida.plugins import WorkflowFactory
-from aiida.cmdline.utils.decorators import with_dbenv
-from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import submit
-from aiida.orm import load_node, Bool, Code, Dict, Group, Str, KpointsData
+from aiida.cmdline.utils.decorators import with_dbenv
+from aiida.orm import load_node, Bool, Dict, Group, Str
 from aiidaplus.utils import (get_default_potcar_mapping,
                              get_elements_from_aiidastructure,
                              get_encut)
@@ -47,19 +47,33 @@ def get_elements(pk):
 # ---------------
 # common settings
 # ---------------
-wf = 'vasp.vasp'
-max_wallclock_seconds = 36000
+wf = 'twinpy.shear'
 label = "this is label"
 description = "this is description"
+dry_run = False
+# dry_run = True
+is_phonon = True
+max_wallclock_seconds_relax = 100 * 3600
+max_wallclock_seconds_phonon = 1000 * 3600
 clean_workdir = True
+vasp_code = 'vasp544mpi'
+
+
+# ---------------------
+# twinpy shear settings
+# ---------------------
+shear_conf = {
+        'twinmode': '10-12',
+        'grids': 5,
+        }
 
 
 # ---------
 # structure
 # ---------
-# structure_pk = 3932
-structure_pk = 1250  # Ti_c, aiida
-# structure_pk = 17026 # glass
+# structure_pk = 11850  # Ti, glass database
+structure_pk = 6836     # Ti_c, aiida database
+# structure_pk = 5024   # Ti_d, aiida database
 elements = get_elements(structure_pk)
 
 
@@ -83,7 +97,7 @@ potential_mapping = get_default_potcar_mapping(elements)
 # ============
 incar_settings = {
     'addgrid': True,
-    'ediff': 1e-6,
+    'ediff': 1e-8,
     'gga': 'PS',
     'ialgo': 38,
     'lcharg': False,
@@ -96,58 +110,63 @@ incar_settings = {
 # =====
 # encut
 # =====
-# encut = 300
-encut = get_encut(potential_family=potential_family,
-                  potential_mapping=potential_mapping,
-                  multiply=1.3)
+encut = 375
+# encut = get_encut(potential_family=potential_family,
+#                   potential_mapping=potential_mapping,
+#                   multiply=1.3)
 
 incar_settings['encut'] = encut
 
 # =====
 # smear
 # =====
-# -- metal
 smearing_settings = {
     'ismear': 1,
     'sigma': 0.4
     }
-
-# -- not metal
-# smearing_settings = {
-#     'ismear': 0,
-#     'sigma': 0.01
-#     }
-
 incar_settings.update(smearing_settings)
 
-# =====
-# relax
-# =====
-# -- if relax
-relax_settings = {
-    'nsw': 40,
-    'ibrion': 2,
-    'isif': 3,
-    'ediffg': -1e-4
+
+# -----------
+# phonon_conf
+# -----------
+phonon_conf = {
+    'distance': 0.03,
+    'mesh': [18, 18, 10],
+    'supercell_matrix': [4, 4, 3],
+    'symmetry_tolerance': 1e-5
     }
 
-incar_settings.update(relax_settings)
 
+# --------------
+# relax_settings
+# --------------
+# volume and shape relaxation is False by default
+relax_conf = {
+    'algo': 'rd',  # default 'cg'
+    'steps': 40,
+    'convergence_absolute': False,
+    'convergence_max_iterations': 3,
+    # 'convergence_max_iterations': 10,
+    'convergence_on': True,
+    'convergence_positions': 0.01,
+    # 'force_cutoff': 0.0001,
+    'force_cutoff': 1e-7,
+    }
 
-# ---------------
-# parser settings
-# ---------------
+# 'add_structure': True is automatically set
 parser_settings = {
     'add_misc': True,
     'add_kpoints': True,
-    'add_structure': True,
     'add_energies': True,
     'add_forces': True,
     'add_stress': True,
 
-    # -- before activate parameters below
-    # -- always chech whether is works
-    # -- detail see parser/vasp.py in aiida-vasp
+    # +++++++++++++++++++++++++++++++++++++++
+    # before activate parameters below
+    # always chech whether is works
+    # detail see parser/vasp.py in aiida-vasp
+    # +++++++++++++++++++++++++++++++++++++++
 
     # 'add_dynmat': True,
     # 'add_hessian': True,
@@ -161,11 +180,17 @@ parser_settings = {
     # 'add_wavecar': False,
 }
 
+
 # -------
 # kpoints
 # -------
 kpoints = {
     'mesh': [8, 8, 6],
+    'offset': [0., 0., 0.5],
+    }
+
+kpoints_phonon = {
+    'mesh': [2, 2, 2],
     'offset': [0., 0., 0.5],
     }
 
@@ -191,9 +216,9 @@ def main(computer,
     # common settings
     workflow = WorkflowFactory(wf)
     builder = workflow.get_builder()
-    builder.code = Code.get_from_string('{}@{}'.format('vasp544mpi', computer))
-    builder.clean_workdir = Bool(clean_workdir)
-    builder.verbose = Bool(True)
+    builder.computer = Str(computer)
+    builder.dry_run = Bool(dry_run)
+    builder.is_phonon = Bool(is_phonon)
 
     # label and descriptions
     if cmd_label is None:
@@ -202,39 +227,40 @@ def main(computer,
         builder.metadata.label = cmd_label
     builder.metadata.description = description
 
-    # options
-    options = AttributeDict()
-    options.account = ''
-    options.qos = ''
-    options.resources = {
-            'tot_num_mpiprocs': 16,
-            # 'num_machines': 1,  # occur an error, probably unnecessary.
-            'parallel_env': 'mpi*'
-            }
-    options.queue_name = queue
-    options.max_wallclock_seconds = max_wallclock_seconds
-    builder.options = Dict(dict=options)
-
     # structure
     builder.structure = load_node(structure_pk)
 
-    # incar
-    builder.parameters = Dict(dict=incar_settings)
+    # twinpy settings
+    builder.shear_conf = Dict(dict=shear_conf)
 
-    # parser settings
-    builder.settings = Dict(dict={'parser_settings': parser_settings})
-
-    # kpoints
-    kpt = KpointsData()
-    kpt.set_kpoints_mesh(kpoints['mesh'], offset=kpoints['offset'])
-    builder.kpoints = kpt
-
-    # potcar
-    builder.potential_family = Str(potential_family)
-    builder.potential_mapping = Dict(dict=potential_mapping)
+    # vasp settings
+    base_settings = {
+            'vasp_code': vasp_code,
+            'incar_settings': incar_settings,
+            'potential_family': potential_family,
+            'potential_mapping': potential_mapping,
+            }
+    relax_settings = deepcopy(base_settings)
+    relax_settings.update({
+        'kpoints': kpoints,
+        'options': {'queue_name': queue,
+                    'max_wallclock_seconds': max_wallclock_seconds_relax},
+        'relax_conf': relax_conf,
+        'clean_workdir': clean_workdir,
+        'parser_settings': parser_settings,
+        })
+    phonon_settings = deepcopy(base_settings)
+    phonon_settings.update({
+        'kpoints': kpoints_phonon,
+        'options': {'queue_name': queue,
+                    'max_wallclock_seconds': max_wallclock_seconds_phonon},
+        'phonon_conf': phonon_conf,
+        })
+    builder.calculator_settings = Dict(dict={'relax': relax_settings,
+                                             'phonon': phonon_settings})
 
     # submit
-    future = submit(workflow, **builder)
+    future = submit(builder)
     print(future)
     print('Running workchain with pk={}'.format(future.pk))
 
