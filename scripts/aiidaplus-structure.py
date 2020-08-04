@@ -141,6 +141,7 @@ def get_description(pmgstruct, symprec):
         if key == 'wyckoffs' or key == 'site_symmetry_symbols':
             print(key)
             if len(data[key]) > 5:
+                ("omission because so long")
                 continue
         print(key+':')
         pprint(data[key])

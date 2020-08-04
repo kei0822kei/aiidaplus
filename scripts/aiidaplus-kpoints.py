@@ -10,53 +10,37 @@ import argparse
 import numpy as np
 from pprint import pprint
 from aiida.cmdline.utils.decorators import with_dbenv
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from aiidaplus.get_data import get_structure_data_from_pymatgen
-from aiidaplus.utils import get_kpoints
+from twinpy.common.kpoints import get_mesh_offset_from_direct_lattice
+
 
 # argparse
 def get_argparse():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-f', '--filename', type=str, default=None,
-        help="input file name or structure pk")
-    parser.add_argument('-t', '--filetype', type=str, default=None,
-        help="input file type, currently supported 'cif' or 'poscar' or 'pk'")
-    parser.add_argument('--interval', type=float, default=None,
-        help="interval")
-    parser.add_argument('--mesh', type=str, default=None,
-        help="mesh ex. '6 6 6'")
+    parser.add_argument('-f', '--filename',
+                        type=str,
+                        default=None,
+                        help="input file name or structure pk")
+    parser.add_argument('-t', '--filetype',
+                        type=str,
+                        default=None,
+                        help="input file type, currently supported "
+                             "'cif' or 'poscar' or 'pk'")
+    parser.add_argument('--interval',
+                        type=float,
+                        default=None,
+                        help="interval")
+    parser.add_argument('--mesh',
+                        type=str,
+                        default=None,
+                        help="mesh ex. '6 6 6'")
     args = parser.parse_args()
     return args
 
+
 def get_pmgstructure(filename, filetype, symprec):
     """
-    get pymatgen structure object
-
-        Parameters
-        ----------
-        filename : str
-            input file name
-        filetype : str
-            file type of 'filename'
-            currently supported 'cif' or 'poscar'
-
-        Notes
-        -----
-        occupancy_tolerance = 1.
-        - If total occupancy of a site is between 1 and
-          occupancy_tolerance, the occupancies will be scaled down to 1.
-
-        site_tolerance = 1e-5
-        - This tolerance is used to determine if two sites are sitting
-          in the same position, in which case they will be combined to
-          a single disordered site.
-        - 1e-5 is the same as VASP SYMPREC defualt
-
-        Raises
-        ------
-        ValueError
-            specified filetype is not supported
+    Get pymatgen structure object.
     """
     occupancy_tolerance = 1.
 
@@ -78,6 +62,7 @@ def get_pmgstructure(filename, filetype, symprec):
         raise ValueError("specified filetype is not supported")
     return pmgstruct
 
+
 @with_dbenv()
 def main(filename,
          filetype,
@@ -87,15 +72,26 @@ def main(filename,
     symprec = 1e-5
 
     pmgstruct = get_pmgstructure(filename, filetype, symprec)
-    kpts = get_kpoints(pmgstruct, mesh=mesh, interval=interval, verbose=True)
+    lattice = pmgstruct.lattice.matrix
+    kpts = get_mesh_offset_from_direct_lattice(
+            lattice=lattice,
+            interval=interval,
+            mesh=mesh,
+            include_two_pi=True
+            )
+    print(pmgstruct)
+    print("\n\n")
+    print("# ----------------------")
+    print("# Reciprocal Information")
+    print("# ----------------------")
+    for key in kpts.keys():
+        print("%s:" % key)
+        pprint(kpts[key])
+        print("")
+
 
 if __name__ == '__main__':
     args = get_argparse()
-    if args.interval is None and args.mesh is None:
-        raise ValueError("both mesh and interval are not specified")
-    if args.interval is not None and args.mesh is not None:
-        raise ValueError("both mesh and interval are specified")
-
     if args.mesh is not None:
         mesh = np.array(list(map(int, args.mesh.split())))
     else:

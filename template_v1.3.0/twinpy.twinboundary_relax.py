@@ -123,7 +123,8 @@ parser_settings = {
 # kpoints
 # -------
 kpoints = {
-    'mesh': ['check carefully'],
+    # 'mesh': ['check carefully'],
+    'mesh': [8, 4, 1],
     'offset': [0.5, 0.5, 0.5]
     }
 
@@ -140,7 +141,8 @@ twinboundary_relax_conf = {
     'shear_strain_ratio': 0.,
     'make_tb_flat': True,
     }
-relax_times = 40
+# relax_times = 40
+relax_times = 2
 
 
 def check_group_existing(group):
@@ -215,4 +217,4 @@ if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
          group=args.group,
-         cmd_label=args.cmd_label)
+         cmd_label=args.label)

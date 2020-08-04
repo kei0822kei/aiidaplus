@@ -15,7 +15,7 @@ from aiida.common import NotExistentAttributeError
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.plugins import WorkflowFactory
 from phonopy import Phonopy
-from aiidaplus.utils import get_kpoints
+# from aiidaplus.utils import get_kpoints
 
 RELAX_WF = WorkflowFactory('vasp.relax')
 PHONOPY_WF = WorkflowFactory('phonopy.phonopy')
@@ -63,6 +63,7 @@ def get_structure_data_from_pymatgen(pmgstructure:Structure,
     dic['lattice'] = pmgstructure.lattice.matrix.tolist()
     dic['lattice_abc'] = list(pmgstructure.lattice.abc)
     dic['lattice_angles'] = list(pmgstructure.lattice.angles)
+    dic['number'] =dataset['number']
     dic['international'] = dataset['international']
     dic['pointgroup'] = dataset['pointgroup']
     dic['natoms'] = len(pmgstructure.species)
@@ -112,11 +113,11 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
     except exceptions.NotExistent:
         warnings.warn("final structure does not exist")
 
-    kpoints = get_kpoints(
-            structure=load_node(initial_structure_pk).get_pymatgen_structure(),
-            mesh=node.inputs.kpoints.get_kpoints_mesh()[0],
-            )
-    kpoints['intervals'] = kpoints['intervals'].tolist()
+    # kpoints = get_kpoints(
+    #         structure=load_node(initial_structure_pk).get_pymatgen_structure(),
+    #         mesh=node.inputs.kpoints.get_kpoints_mesh()[0],
+    #         )
+    # kpoints['intervals'] = kpoints['intervals'].tolist()
 
     dic = {}
     dic['data_type'] = node.process_class.get_name()
@@ -125,7 +126,7 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
     dic['parser_settings'] = node.inputs.settings.get_dict()['parser_settings']
     dic['potential_family'] = node.inputs.potential_family.value
     dic['potential_mapping'] = node.inputs.potential_mapping.get_dict()
-    dic['kpoints'] = kpoints
+    # dic['kpoints'] = kpoints
     dic['structure'] = structure
     dic['maximum_force'] = results['maximum_force']
     dic['maximum_stress'] = results['maximum_stress']
@@ -240,7 +241,7 @@ def get_shear_data(pk):
 
 def get_twinboundary_relax_data(pk):
     """
-    get twinboudnary relax data
+    Get twinboudnary relax data.
     """
     # get called pks
     node = load_node(pk)

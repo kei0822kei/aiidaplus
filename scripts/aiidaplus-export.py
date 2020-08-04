@@ -22,8 +22,8 @@ from aiidaplus.get_data import (get_structure_data,
                                 # get_twinboundary_data,
                                 get_twinboundary_relax_data,
                                 )
-from aiidaplus.utils import get_kpoints
 from aiidaplus import plot as aiidaplot
+from twinpy.common.kpoints import get_mesh_offset_from_direct_lattice
 
 RELAX_WF = WorkflowFactory('vasp.relax')
 
@@ -117,10 +117,17 @@ def _export_structure(pk, get_data, show):
         filename = 'pk'+str(pk)+'_structure.yaml'
         dic2yaml(data, filename)
 
+
 def _export_twinboundary_relax(pk, get_data, show, ymax):
+    """
+    Notes:
+        'max_force' means the max force acting on atoms in the final static
+        force calculation.
+    """
     data = get_twinboundary_relax_data(pk)
     if show:
-        max_forces = [ get_relax_data(relax_pk)['max_force'] for relax_pk in data['relax_pks'] ]
+        max_forces = [ get_relax_data(relax_pk)['max_force']
+                           for relax_pk in data['relax_pks'] ]
         steps = [ i+1 for i in range(len(max_forces)) ]
 
         fig = plt.figure()
@@ -137,6 +144,7 @@ def _export_twinboundary_relax(pk, get_data, show, ymax):
     if get_data:
         filename = 'pk'+str(pk)+'_twinboundary_relax.yaml'
         dic2yaml(data, filename)
+
 
 def _export_twinboundary(pk, get_data, show, ev_range=4.):
     data = get_twinboundary_data(pk)
@@ -204,33 +212,29 @@ def _export_twinboundary_shear(pk, get_data, show):
         filename = 'pk'+str(pk)+'_twinboundary.yaml'
         dic2yaml(data, filename)
 
+
 def _export_phonon(pk, get_data, show):
     data, phonon = get_phonon_data(pk, get_phonon=True)
     if show:
         pmgstructure = load_node(pk).inputs.structure.get_pymatgen_structure()
-        mesh = get_kpoints(structure=pmgstructure.get_primitive_structure(tolerance=1e-5),
-                           interval=0.15)['mesh']
+        mesh = get_mesh_offset_from_direct_lattice(
+                lattice=pmgstructure.lattice.matrix,
+                interval=0.15,
+                include_two_pi=True)['mesh']
         print("run total dos with mesh: {}".format(mesh))
         phonon.run_mesh(mesh)
         phonon.run_total_dos()
-        if get_data:
-            yamlfile = 'pk'+str(pk)+'_band.yaml'
-            phonon.auto_band_structure(plot=False,
-                                       write_yaml=True,
-                                       filename=yamlfile,
-                                       npoints=101,
-                                       with_eigenvectors=True)
-        else:
-            phonon.auto_band_structure(plot=False,
-                                       write_yaml=False,
-                                       filename=None,
-                                       npoints=101)
+        phonon.auto_band_structure(plot=False,
+                                   write_yaml=False,
+                                   filename=None,
+                                   npoints=51)
         phonon.plot_band_structure_and_dos().show()
     if get_data:
         filename = 'pk'+str(pk)+'_phonon.yaml'
         phonon_filename = 'pk'+str(pk)+'_phonopy.yaml'
         dic2yaml(data, filename)
         phonon.save(phonon_filename)
+
 
 def _export_relax(pk, get_data, show):
 
