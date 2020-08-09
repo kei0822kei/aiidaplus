@@ -47,8 +47,6 @@ def get_elements(pk):
 # ---------------
 # common settings
 # ---------------
-wf = 'phonopy.phonopy'
-code = 'phonopy'
 tot_num_mpiprocs = 16
 max_wallclock_seconds = 1000 * 3600
 label = "this is label"
@@ -102,9 +100,9 @@ incar_settings = {
 # encut
 # =====
 # encut = 375
-encut = get_encut(potential_family=potential_family,
-                  potential_mapping=potential_mapping,
-                  multiply=1.3)
+encut = int(get_encut(potential_family=potential_family,
+                      potential_mapping=potential_mapping,
+                      multiply=1.3))
 
 incar_settings['encut'] = encut
 
@@ -145,14 +143,14 @@ kpoints_nac = {
 # -------
 # phonopy
 # -------
-vasp_code = 'vasp544mpi'
+# vasp_code = 'vasp544mpi'
+tot_num_mpiprocs = 16
 distance = 0.03
 is_nac = False
 # is_nac = True
 phonopy_mesh = [13,13,13]
 supercell_matrix = [2,2,2]
 symmetry_tolerance = 1e-5
-run_phonopy = True
 
 
 def check_group_existing(group):
@@ -163,91 +161,141 @@ def check_group_existing(group):
     print("OK\n")
 
 
-@with_dbenv()
-def main(computer,
-         queue='',
-         group=None,
-         cmd_label=None):
+def get_builder(dic):
 
-    def get_phonon_settings():
-        phonon_settings = {}
-        phonon_settings['distance'] = distance
-        phonon_settings['is_nac'] = is_nac
-        phonon_settings['mesh'] = phonopy_mesh
-        phonon_settings['supercell_matrix'] = supercell_matrix
-        phonon_settings['symmetry_tolerance'] = symmetry_tolerance
-        return phonon_settings
+    def _get_vasp_settings(computer, options, is_nac, calc):
 
-    def get_vasp_settings(queue):
-        dic = {}
-        base_config = {'code_string': vasp_code+'@'+computer,
-                       'kpoints_mesh': kpoints_fc2['mesh'],
-                       'kpoints_offset': kpoints_fc2['offset'],
-                       'potential_family': potential_family,
-                       'potential_mapping': potential_mapping,
-                       'options': {'resources': {'parallel_env': 'mpi*',
-                                                 'tot_num_mpiprocs': 16},
-                                   'queue_name': queue,
-                                   'max_wallclock_seconds': 3600 * 10}}
+        vasp_settings = {}
+
+        # base settings
+        base_config = {
+            'code_string': 'vasp544mpi'+'@'+computer,
+            'kpoints_mesh': calc['kpoints_fc2']['mesh'],
+            'kpoints_offset': calc['kpoints_fc2']['offset'],
+            'potential_family': calc['potential_family'],
+            'potential_mapping': calc['potential_mapping'],
+            'options': {'resources': {'parallel_env': 'mpi*',
+                                      'tot_num_mpiprocs':
+                                              calc['tot_num_mpiprocs']},
+                        'queue_name': options['queue'],
+                        'max_wallclock_seconds':
+                                options['max_wallclock_seconds'],
+                        },
+            }
         base_parser_settings = {'add_energies': True,
                                 'add_forces': True,
                                 'add_stress': True}
+
+        # forces settings
         forces_config = base_config.copy()
         forces_config.update({'parser_settings': base_parser_settings,
-                              'parameters': incar_settings})
-        dic['forces'] = forces_config
+                              'parameters': calc['incar_settings']})
+        vasp_settings['forces'] = forces_config
+
         if is_nac:
             nac_config = base_config.copy()
             nac_parser_settings = {'add_born_charges': True,
                                    'add_dielectrics': True}
             nac_parser_settings.update(base_parser_settings)
             nac_incar_dict = {'lepsilon': True}
-            nac_incar_dict.update(incar_settings)
+            nac_incar_dict.update(calc['incar_settings'])
             del nac_incar_dict['npar']
             del nac_incar_dict['kpar']
-            nac_config.update({'kpoints_mesh': kpoints_nac['mesh'],
+            nac_config.update({'kpoints_mesh': calc['nac_mesh'],
                                'parser_settings': nac_parser_settings,
                                'parameters': nac_incar_dict})
-            dic['nac'] = nac_config
-        return dic
+            vasp_settings = nac_config
 
-    # group check
-    if group is not None:
-        check_group_existing(group)
+        return vasp_settings
 
     # common settings
+    wf = 'phonopy.phonopy'
+    code = 'phonopy'
     workflow = WorkflowFactory(wf)
     builder = workflow.get_builder()
-    builder.code_string = Str('{}@{}'.format(code, computer))
-
-    # label and descriptions
-    if cmd_label is None:
-        builder.metadata.label = label
-    else:
-        builder.metadata.label = cmd_label
-    builder.metadata.description = description
+    builder.code_string = Str(
+            '{}@{}'.format(code, dic['computer']))
+    builder.metadata.label = dic['metadata']['label']
+    builder.metadata.description = dic['metadata']['description']
 
     # options
     options = AttributeDict()
     options.account = ''
     options.qos = ''
+    # -- does it work when global tot_num_mpiprocs=32 ?
     options.resources = {'parallel_env': 'mpi*',
                          'tot_num_mpiprocs': 16}
-    options.queue_name = queue
-    options.max_wallclock_seconds = max_wallclock_seconds
+    options.queue_name = dic['options']['queue']
+    options.max_wallclock_seconds = dic['options']['max_wallclock_seconds']
     builder.options = Dict(dict=options)
 
     # structure
-    builder.structure = load_node(structure_pk)
+    builder.structure = load_node(dic['structure_pk'])
 
     # phonopy
-    builder.phonon_settings = Dict(dict=get_phonon_settings())
-    builder.run_phonopy = Bool(run_phonopy)
+    builder.phonon_settings = Dict(dict=dic['phonon_settings'])
+    builder.run_phonopy = Bool(True)
     builder.remote_phonopy = Bool(True)
-    builder.calculator_settings = Dict(dict=get_vasp_settings(queue))
+    builder.calculator_settings = \
+            Dict(dict=_get_vasp_settings(
+                          computer=dic['computer'],
+                          options=dic['options'],
+                          is_nac=dic['phonon_settings']['is_nac'],
+                          calc=dic['calculator_settings'],
+                          )
+                 )
+
+    return builder
+
+
+@with_dbenv()
+def main(computer,
+         queue='',
+         group=None,
+         cmd_label=None):
+
+    # group check
+    if group is not None:
+        check_group_existing(group)
+
+    # label
+    if cmd_label is None:
+        lb = label
+    else:
+        lb = cmd_label
+
+    # get builder
+    dic = {
+            'computer': computer,
+            'metadata': {
+                'label': lb,
+                'description': description,
+                },
+            'options': {
+                'queue': queue,
+                'max_wallclock_seconds': max_wallclock_seconds,
+                },
+            'structure_pk': structure_pk,
+            'phonon_settings': {
+                'distance': distance,
+                'is_nac': is_nac,
+                'mesh': phonopy_mesh,
+                'supercell_matrix': supercell_matrix,
+                'symmetry_tolerance': symmetry_tolerance,
+                },
+            'calculator_settings': {
+                'kpoints_fc2': kpoints_fc2,
+                'potential_family': potential_family,
+                'potential_mapping': potential_mapping,
+                'tot_num_mpiprocs': tot_num_mpiprocs,
+                'incar_settings': incar_settings,
+                'nac_mesh': kpoints_nac['mesh'],
+                },
+            }
+    builder = get_builder(dic=dic)
 
     # submit
-    future = submit(workflow, **builder)
+    future = submit(builder)
     print(future)
     print('Running workchain with pk={}'.format(future.pk))
 
