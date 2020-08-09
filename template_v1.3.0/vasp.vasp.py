@@ -5,7 +5,8 @@ from aiida.plugins import WorkflowFactory
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import submit
-from aiida.orm import load_node, Bool, Code, Dict, Group, Str, KpointsData
+from aiida.orm import (load_node, Bool, Code, Dict, Float,
+                       Group, Int, Str, KpointsData)
 from aiidaplus.utils import (get_default_potcar_mapping,
                              get_elements_from_aiidastructure,
                              get_encut)
@@ -47,7 +48,8 @@ def get_elements(pk):
 # ---------------
 # common settings
 # ---------------
-wf = 'vasp.vasp'
+use_relax = False  # if True, use 'vasp.relax' and you have to set relax_conf
+wf = 'vasp.relax'
 max_wallclock_seconds = 36000
 label = "this is label"
 description = "this is description"
@@ -57,9 +59,9 @@ clean_workdir = True
 # ---------
 # structure
 # ---------
-# structure_pk = 3932
+# structure_pk = 30347  # AgBr
+# structure_pk = 4545  # for glass, Ne
 structure_pk = 1250  # Ti_c, aiida
-# structure_pk = 17026 # glass
 elements = get_elements(structure_pk)
 
 
@@ -83,7 +85,7 @@ potential_mapping = get_default_potcar_mapping(elements)
 # ============
 incar_settings = {
     'addgrid': True,
-    'ediff': 1e-6,
+    'ediff': 1e-8,
     'gga': 'PS',
     'ialgo': 38,
     'lcharg': False,
@@ -93,13 +95,28 @@ incar_settings = {
     'prec': 'Accurate',
     }
 
+
+# ==================
+# vasp.vasp settings
+# ==================
+# -- In the case relax with vasp.vasp workflow
+if use_relax == False:
+    relax_settings = {
+        'nsw': 40,
+        'ibrion': 2,
+        'isif': 3,
+        'ediffg': -1e-4,
+        }
+    incar_settings.update(relax_settings)
+
+
 # =====
 # encut
 # =====
 # encut = 300
-encut = get_encut(potential_family=potential_family,
-                  potential_mapping=potential_mapping,
-                  multiply=1.3)
+encut = int(get_encut(potential_family=potential_family,
+                      potential_mapping=potential_mapping,
+                      multiply=1.3))
 
 incar_settings['encut'] = encut
 
@@ -120,27 +137,39 @@ smearing_settings = {
 
 incar_settings.update(smearing_settings)
 
-# =====
-# relax
-# =====
-# -- if relax
-relax_settings = {
-    'nsw': 40,
-    'ibrion': 2,
-    'isif': 3,
-    'ediffg': -1e-4
-    }
 
-incar_settings.update(relax_settings)
+# --------------
+# relax_settings
+# --------------
+# -- If use_relax = True, this conf is used.
+if use_relax == True:
+    relax_conf = {
+        'perform': True,
+        'positions': True,
+        'volume': True,
+        'shape': True,
+        'algo': 'rd',  # default: 'cg'
+        'steps': 40,
+        'convergence_absolute': False,
+        'convergence_max_iterations': 2,
+        'convergence_on': True,
+        'convergence_positions': 0.01,
+        'convergence_shape_angles': 0.1,
+        'convergence_shape_lengths': 0.1,
+        'convergence_volume': 0.01,
+        'force_cutoff': 1e-7,  # or 'energy_cutoff': 1e-4,
+        }
+else:
+    relax_conf = None
 
 
 # ---------------
 # parser settings
 # ---------------
+# -- 'add_structure': True is automatically set
 parser_settings = {
     'add_misc': True,
     'add_kpoints': True,
-    'add_structure': True,
     'add_energies': True,
     'add_forces': True,
     'add_stress': True,
@@ -166,16 +195,120 @@ parser_settings = {
 # -------
 kpoints = {
     'mesh': [8, 8, 6],
-    'offset': [0., 0., 0.5],
+    'offset': [0, 0, 0.5]
     }
 
 
 def check_group_existing(group):
+
     print("------------------------------------------")
     print("check group '%s' exists" % group)
     print("------------------------------------------")
     Group.get(label=group)
     print("OK\n")
+
+
+def get_builder(dic):
+
+    # set workflow
+    if dic['use_relax']:
+        wf = 'vasp.relax'
+    else:
+        wf = 'vasp.vasp'
+
+    # common settings
+    workflow = WorkflowFactory(wf)
+    builder = workflow.get_builder()
+    builder.code = Code.get_from_string(
+            '{}@{}'.format('vasp544mpi', dic['computer']))
+    builder.clean_workdir = Bool(dic['clean_workdir'])
+    builder.verbose = Bool(True)
+    builder.metadata.label = dic['metadata']['label']
+    builder.metadata.description = dic['metadata']['description']
+
+    # options
+    options = AttributeDict()
+    options.account = ''
+    options.qos = ''
+    options.resources = {
+            'tot_num_mpiprocs': 16,
+            'parallel_env': 'mpi*',
+            }
+    options.queue_name = dic['options']['queue']
+    options.max_wallclock_seconds = dic['options']['max_wallclock_seconds']
+    builder.options = Dict(dict=options)
+
+    # structure
+    builder.structure = load_node(dic['structure_pk'])
+
+    # incar
+    builder.parameters = Dict(dict=dic['incar_settings'])
+
+    # relax
+    if dic['use_relax']:
+        relax_attribute = AttributeDict()
+        keys = relax_conf.keys()
+        if 'perform' in keys:
+            relax_attribute.perform = \
+                    Bool(dic['relax_conf']['perform'])
+        if 'positions' in keys:
+            relax_attribute.positions = \
+                    Bool(dic['relax_conf']['positions'])
+        if 'volume' in keys:
+            relax_attribute.volume = \
+                    Bool(dic['relax_conf']['volume'])
+        if 'shape' in keys:
+            relax_attribute.shape = \
+                    Bool(dic['relax_conf']['shape'])
+        if 'algo' in keys:
+            relax_attribute.algo = \
+                    Str(dic['relax_conf']['algo'])
+        if 'steps' in keys:
+            relax_attribute.steps = \
+                    Int(dic['relax_conf']['steps'])
+        if 'convergence_absolute' in keys:
+            relax_attribute.convergence_absolute = \
+                    Bool(dic['relax_conf']['convergence_absolute'])
+        if 'convergence_max_iterations' in keys:
+            relax_attribute.convergence_max_iterations = \
+                    Int(dic['relax_conf']['convergence_max_iterations'])
+        if 'convergence_on' in keys:
+            relax_attribute.convergence_on = \
+                    Bool(dic['relax_conf']['convergence_on'])
+        if 'convergence_positions' in keys:
+            relax_attribute.convergence_positions = \
+                    Float(dic['relax_conf']['convergence_positions'])
+        if 'convergence_shape_angles' in keys:
+            relax_attribute.convergence_shape_angles = \
+                    Float(dic['relax_conf']['convergence_shape_angles'])
+        if 'convergence_shape_lengths' in keys:
+            relax_attribute.convergence_shape_lengths = \
+                    Float(dic['relax_conf']['convergence_shape_lengths'])
+        if 'convergence_volume' in keys:
+            relax_attribute.convergence_volume = \
+                    Float(dic['relax_conf']['convergence_volume'])
+        if 'force_cutoff' in keys:
+            relax_attribute.force_cutoff = \
+                    Float(dic['relax_conf']['force_cutoff'])
+        if 'energy_cutoff' in keys:
+            relax_attribute.energy_cutoff = \
+                    Float(dic['relax_conf']['energy_cutoff'])
+        builder.relax = relax_attribute
+
+    # parser settings
+    builder.settings = Dict(dict={'parser_settings': dic['parser_settings']})
+
+    # kpoints
+    kpt = KpointsData()
+    kpt.set_kpoints_mesh(dic['kpoints']['mesh'],
+                         offset=dic['kpoints']['offset'])
+    builder.kpoints = kpt
+
+    # potcar
+    builder.potential_family = Str(dic['potential_family'])
+    builder.potential_mapping = Dict(dict=dic['potential_mapping'])
+
+    return builder
 
 
 @with_dbenv()
@@ -188,53 +321,37 @@ def main(computer,
     if group is not None:
         check_group_existing(group)
 
-    # common settings
-    workflow = WorkflowFactory(wf)
-    builder = workflow.get_builder()
-    builder.code = Code.get_from_string('{}@{}'.format('vasp544mpi', computer))
-    builder.clean_workdir = Bool(clean_workdir)
-    builder.verbose = Bool(True)
-
-    # label and descriptions
+    # label
     if cmd_label is None:
-        builder.metadata.label = label
+        lb = label
     else:
-        builder.metadata.label = cmd_label
-    builder.metadata.description = description
+        lb = cmd_label
 
-    # options
-    options = AttributeDict()
-    options.account = ''
-    options.qos = ''
-    options.resources = {
-            'tot_num_mpiprocs': 16,
-            # 'num_machines': 1,  # occur an error, probably unnecessary.
-            'parallel_env': 'mpi*'
+    # get builder
+    dic = {
+            'use_relax': use_relax,
+            'computer': computer,
+            'clean_workdir': clean_workdir,
+            'metadata': {
+                'label': lb,
+                'description': description,
+                },
+            'options': {
+                'queue': queue,
+                'max_wallclock_seconds': max_wallclock_seconds,
+                },
+            'structure_pk': structure_pk,
+            'incar_settings': incar_settings,
+            'relax_conf': relax_conf,
+            'parser_settings': parser_settings,
+            'kpoints': kpoints,
+            'potential_mapping': potential_mapping,
+            'potential_family': potential_family,
             }
-    options.queue_name = queue
-    options.max_wallclock_seconds = max_wallclock_seconds
-    builder.options = Dict(dict=options)
-
-    # structure
-    builder.structure = load_node(structure_pk)
-
-    # incar
-    builder.parameters = Dict(dict=incar_settings)
-
-    # parser settings
-    builder.settings = Dict(dict={'parser_settings': parser_settings})
-
-    # kpoints
-    kpt = KpointsData()
-    kpt.set_kpoints_mesh(kpoints['mesh'], offset=kpoints['offset'])
-    builder.kpoints = kpt
-
-    # potcar
-    builder.potential_family = Str(potential_family)
-    builder.potential_mapping = Dict(dict=potential_mapping)
+    builder = get_builder(dic=dic)
 
     # submit
-    future = submit(workflow, **builder)
+    future = submit(builder)
     print(future)
     print('Running workchain with pk={}'.format(future.pk))
 

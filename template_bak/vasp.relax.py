@@ -156,6 +156,104 @@ def check_group_existing(group):
     Group.get(label=group)
     print("OK\n")
 
+
+def get_builder(dic)
+    workflow = WorkflowFactory(wf)
+    builder = workflow.get_builder()
+    builder.code = Code.get_from_string('{}@{}'.format('vasp544mpi', computer))
+    builder.clean_workdir = Bool(False)
+    builder.verbose = Bool(True)
+
+    # label and descriptions
+    builder.metadata.label = label
+    builder.metadata.description = description
+
+
+    # options
+    options = AttributeDict()
+    options.account = ''
+    options.qos = ''
+    options.resources =  {
+            'tot_num_mpiprocs': 16,
+            'num_machines': 1,
+            'parallel_env': 'mpi*'
+            }
+    options.queue_name = queue
+    options.max_wallclock_seconds = max_wallclock_seconds
+    builder.options = Dict(dict=options)
+
+    # structure
+    builder.structure = load_node(structure_pk)
+
+    # incar
+    builder.parameters = Dict(dict=incar_settings)
+
+    # relax
+    relax_attribute = AttributeDict()
+    keys = relax_conf.keys()
+    if 'perform' in keys:
+        relax_attribute.perform = \
+                Bool(relax_conf['perform'])
+    if 'positions' in keys:
+        relax_attribute.positions = \
+                Bool(relax_conf['positions'])
+    if 'volume' in keys:
+        relax_attribute.volume = \
+                Bool(relax_conf['volume'])
+    if 'shape' in keys:
+        relax_attribute.shape = \
+                Bool(relax_conf['shape'])
+    if 'algo' in keys:
+        relax_attribute.algo = \
+                Str(relax_conf['algo'])
+    if 'steps' in keys:
+        relax_attribute.steps = \
+                Int(relax_conf['steps'])
+    if 'convergence_absolute' in keys:
+        relax_attribute.convergence_absolute = \
+                Bool(relax_conf['convergence_absolute'])
+    if 'convergence_max_iterations' in keys:
+        relax_attribute.convergence_max_iterations = \
+                Int(relax_conf['convergence_max_iterations'])
+    if 'convergence_on' in keys:
+        relax_attribute.convergence_on = \
+                Bool(relax_conf['convergence_on'])
+    if 'convergence_positions' in keys:
+        relax_attribute.convergence_positions = \
+                Float(relax_conf['convergence_positions'])
+    if 'convergence_shape_angles' in keys:
+        relax_attribute.convergence_shape_angles = \
+                Float(relax_conf['convergence_shape_angles'])
+    if 'convergence_shape_lengths' in keys:
+        relax_attribute.convergence_shape_lengths = \
+                Float(relax_conf['convergence_shape_lengths'])
+    if 'convergence_volume' in keys:
+        relax_attribute.convergence_volume = \
+                Float(relax_conf['convergence_volume'])
+    if 'force_cutoff' in keys:
+        relax_attribute.force_cutoff = \
+                Float(relax_conf['force_cutoff'])
+    if 'energy_cutoff' in keys:
+        relax_attribute.energy_cutoff = \
+                Float(relax_conf['energy_cutoff'])
+    builder.relax = relax_attribute
+    builder.settings = Dict(dict=relax_settings)
+
+    # kpoints
+    kpt = KpointsData()
+    kpoints_vasp = get_kpoints(structure=builder.structure.get_pymatgen(),
+                               mesh=kpoints['mesh'],
+                               kdensity=kpoints['kdensity'],
+                               offset=kpoints['offset'])
+    kpt.set_kpoints_mesh(kpoints_vasp['mesh'], offset=kpoints_vasp['offset'])
+    builder.kpoints = kpt
+
+    # potcar
+    builder.potential_family = Str(potential_family)
+    builder.potential_mapping = Dict(dict=potential_mapping)
+
+
+
 @with_dbenv()
 def main(computer,
          queue='',
@@ -164,6 +262,25 @@ def main(computer,
     # group check
     if group is not None:
         check_group_existing(group)
+
+    dic = {
+            'workflow': wf,
+            'computer': computer,
+            'metadata': {
+                'label': label,
+                'description': description,
+                },
+            'options': {
+                'queue': queue,
+                'max_wallclock_seconds': max_wallclock_seconds,
+                }
+            'structure_pk': structure_pk,
+            'incar_settings': incar_settings,
+            'relax_conf': relax_conf,
+            }
+
+
+
 
     # common settings
     workflow = WorkflowFactory(wf)
