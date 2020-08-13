@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-get data from aiida pk
+Get data from aiida pk.
 """
 import numpy as np
 import warnings
@@ -15,22 +15,24 @@ from aiida.common import NotExistentAttributeError
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.plugins import WorkflowFactory
 from phonopy import Phonopy
-# from aiidaplus.utils import get_kpoints
+from twinpy.common.kpoints import get_mesh_offset_from_direct_lattice
 
 RELAX_WF = WorkflowFactory('vasp.relax')
 PHONOPY_WF = WorkflowFactory('phonopy.phonopy')
 
+
 @with_dbenv()
 def get_node_from_pk(pk):
     """
-    get node from pk
+    Get node from pk.
     """
     return load_node(pk)
+
 
 def check_process_class(node,
                         expected_process_class:str):
     """
-    check process class of node is the same as the expected
+    Check process class of node is the same as the expected.
 
     Args:
         node: aiida node
@@ -42,6 +44,7 @@ def check_process_class(node,
     assert node.process_class.get_name() == expected_process_class, \
             "input node: {}, expected: {} (NOT MATCH)". \
             format(node.process_class, expected_process_class)
+
 
 def get_structure_data_from_pymatgen(pmgstructure:Structure,
                                      symprec:float=1e-5) -> dict:
@@ -117,6 +120,15 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
     #         structure=load_node(initial_structure_pk).get_pymatgen_structure(),
     #         mesh=node.inputs.kpoints.get_kpoints_mesh()[0],
     #         )
+    mesh, offset = node.inputs.kpoints.get_kpoints_mesh()
+    kpt = get_mesh_offset_from_direct_lattice(
+            lattice=np.array(initial_structure['lattice']),
+            mesh=mesh)
+    kpt['offset'] = list(offset)
+    kpt['abc'] = kpt['abc'].tolist()
+    kpt['intervals'] = kpt['intervals'].tolist()
+    kpt['mesh'] = kpt['mesh'].tolist()
+    del kpt['is_hexagonal']
     # kpoints['intervals'] = kpoints['intervals'].tolist()
 
     dic = {}
@@ -126,7 +138,7 @@ def get_vasp_data(pk, symprec=1e-5) -> dict:
     dic['parser_settings'] = node.inputs.settings.get_dict()['parser_settings']
     dic['potential_family'] = node.inputs.potential_family.value
     dic['potential_mapping'] = node.inputs.potential_mapping.get_dict()
-    # dic['kpoints'] = kpoints
+    dic['kpoints'] = kpt
     dic['structure'] = structure
     dic['maximum_force'] = results['maximum_force']
     dic['maximum_stress'] = results['maximum_stress']
