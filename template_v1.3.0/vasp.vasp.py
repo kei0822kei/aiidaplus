@@ -48,7 +48,7 @@ def get_elements(pk):
 # ---------------
 # common settings
 # ---------------
-use_relax = False  # if True, use 'vasp.relax' and you have to set relax_conf
+use_relax = True  # if True, use 'vasp.relax' and you have to set relax_conf
 wf = 'vasp.relax'
 max_wallclock_seconds = 36000
 label = "this is label"

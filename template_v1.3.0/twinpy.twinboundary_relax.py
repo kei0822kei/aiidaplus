@@ -38,7 +38,8 @@ args = get_argparse()
 # ----------
 # relax data
 # ----------
-relax_pk = 231346  # aiida
+relax_pk = 255907  # aiida Ti
+# relax_pk = 255939  # aiida Mg
 data = get_relax_data(relax_pk)
 
 
@@ -124,7 +125,7 @@ parser_settings = {
 # -------
 kpoints = {
     # 'mesh': ['check carefully'],
-    'mesh': [8, 4, 1],
+    'mesh': [8, 2, 4],
     'offset': [0.5, 0.5, 0.5]
     }
 
@@ -132,17 +133,15 @@ kpoints = {
 # ---------------------
 # twinpy shear settings
 # ---------------------
-twinboundary_relax_conf = {
+twinboundary_conf = {
     'twinmode': '10-12',
     'twintype': 1,
+    'layers': 4,
+    'delta': 0.06,
     'xshift': 0.,
     'yshift': 0.,
-    'dim': [1, 1, 2],
     'shear_strain_ratio': 0.,
-    'make_tb_flat': True,
     }
-# relax_times = 40
-relax_times = 2
 
 
 def check_group_existing(group):
@@ -179,7 +178,7 @@ def main(computer,
     builder.structure = load_node(structure_pk)
 
     # twinpy settings
-    builder.twinboundary_relax_conf = Dict(dict=twinboundary_relax_conf)
+    builder.twinboundary_conf = Dict(dict=twinboundary_conf)
 
     # vasp settings
     base_settings = {
@@ -198,7 +197,6 @@ def main(computer,
         'parser_settings': parser_settings,
         })
     builder.calculator_settings = Dict(dict={'relax': relax_settings})
-    builder.relax_times = Int(relax_times)
 
     # submit
     future = submit(builder)
