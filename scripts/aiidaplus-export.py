@@ -8,6 +8,7 @@ This script helps you export various data from aiida database.
 
 import argparse
 import yaml
+import warnings
 import numpy as np
 from pprint import pprint
 from matplotlib import pyplot as plt
@@ -24,6 +25,11 @@ from aiidaplus.get_data import (get_structure_data,
                                 )
 from aiidaplus import plot as aiidaplot
 from twinpy.common.kpoints import get_mesh_offset_from_direct_lattice
+# from twinpy.interfaces.aiida import AiidaRelaxWorkChain
+from twinpy.interfaces.aiida import (
+        AiidaVaspWorkChain,
+        AiidaRelaxWorkChain,
+        )
 
 RELAX_WF = WorkflowFactory('vasp.relax')
 
@@ -236,6 +242,11 @@ def _export_phonon(pk, get_data, show):
         phonon.save(phonon_filename)
 
 
+def _export_vasp(pk):
+    aiida_vasp = AiidaVaspWorkChain(load_node(pk))
+    aiida_vasp.get_description()
+
+
 def _export_relax(pk, get_data, show):
 
     def _get_fig(vasp_results):
@@ -283,14 +294,17 @@ def _export_relax(pk, get_data, show):
                 'total energy')
         fig.suptitle('relux result pk: %s' % pk)
 
-    data = get_relax_data(pk)
-    _get_fig(data['steps'])
-    if get_data:
-        filename = 'pk'+str(pk)+'_relax.yaml'
-        dic2yaml(data, filename)
-        # plt.savefig('pk'+str(pk)+'_relax.png')
-    if show:
-        plt.show()
+    aiida_relax = AiidaRelaxWorkChain(load_node(pk))
+    aiida_relax.get_description()
+    # data = get_relax_data(pk)
+    # _get_fig(data['steps'])
+    # if get_data:
+    #     warnings.warn("--get_data is future removed.")
+    #     # filename = 'pk'+str(pk)+'_relax.yaml'
+    #     # dic2yaml(data, filename)
+    #     # plt.savefig('pk'+str(pk)+'_relax.png')
+    # if show:
+    #     plt.show()
 
 @with_dbenv()
 def main(pk, get_data=False, show=False, ev_range=4., ymax=None):
@@ -322,7 +336,9 @@ def main(pk, get_data=False, show=False, ev_range=4., ymax=None):
         _export_structure(pk, get_data, show)
     elif node.node_type == 'process.workflow.workchain.WorkChainNode.':
         workchain_name = node.process_class.get_name()
-        if workchain_name == 'RelaxWorkChain':
+        if workchain_name == 'VaspWorkChain':
+            _export_vasp(pk)
+        elif workchain_name == 'RelaxWorkChain':
             _export_relax(pk, get_data, show)
         elif workchain_name == 'PhonopyWorkChain':
             _export_phonon(pk, get_data, show)

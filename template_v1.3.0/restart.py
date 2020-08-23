@@ -36,6 +36,10 @@ def get_argparse():
                         type=str,
                         default=None,
                         help="set label")
+    parser.add_argument('--job_pk',
+                        type=int,
+                        default=None,
+                        help="set job_pk")
     args = parser.parse_args()
     return args
 
@@ -53,9 +57,9 @@ def get_elements(pk):
 # ------------------
 # job pk for restart
 # ------------------
-# job_pk = 255504  # VaspWorkChain
-# job_pk = 255501  # RelaxWorkChain
-job_pk = 256283  # TwinBoundaryRelaxWorkChain
+# pk = 255504  # VaspWorkChain
+# pk = 255501  # RelaxWorkChain
+pk = 256283  # TwinBoundaryRelaxWorkChain
 
 
 # ---------------
@@ -129,7 +133,8 @@ def set_relax_conf(builder, relax_conf):
 def main(computer,
          queue='',
          group=None,
-         cmd_label=None):
+         cmd_label=None,
+         cmd_job_pk=None):
 
     # group check
     if group is not None:
@@ -141,7 +146,19 @@ def main(computer,
     else:
         lb = cmd_label
 
+    # job_pk
+    if cmd_job_pk is None:
+        job_pk = cmd_job_pk
+    else:
+        job_pk = pk
     job_node = load_node(job_pk)
+
+    # check job_node is finished
+    state = job_node.process_state.value
+    print("process state of original job node: {}".format(state))
+    if state == 'waiting':
+        raise RuntimeError("pk: {} is still running")
+
     builder = job_node.get_builder_restart()
     builder.metadata.label = lb
     builder.metadata.description = description
@@ -163,7 +180,14 @@ def main(computer,
         relax_conf['shape'] = True
         relax_conf['force_cutoff'] = 1e-6
         relax_conf['algo'] = 'rd'
+        relax_conf['convergence_positions'] = 1e-6
+        relax_conf['convergence_volume'] = 1e-5
         set_relax_conf(builder, relax_conf)
+
+        # -- incar
+        parameters = job_node.inputs.parameters.get_dict()
+        parameters['ediff'] = 1e-8
+        builder.parameters = Dict(dict=parameters)
 
         # -- structure
         builder.structure = job_node.outputs.relax__structure
@@ -207,4 +231,5 @@ if __name__ == '__main__':
     main(computer=args.computer,
          queue=args.queue,
          group=args.group,
-         cmd_label=args.label)
+         cmd_label=args.label,
+         cmd_job_pk=args.job_pk)
