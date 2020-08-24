@@ -247,64 +247,12 @@ def _export_vasp(pk):
     aiida_vasp.get_description()
 
 
-def _export_relax(pk, get_data, show):
-
-    def _get_fig(vasp_results):
-        steps = [ 'step_%02d' % i for i in range(len(vasp_results)) ]
-        relax_times = [ i for i in range(len(vasp_results)) ]
-        volumes = []
-        maximum_forces = []
-        maximum_stresses = []
-        total_energes = []
-        for i, step in enumerate(steps):
-            results = vasp_results[step]
-            volumes.append(results['structure']['final']['volume'])
-            maximum_forces.append(results['maximum_force'])
-            maximum_stresses.append(results['maximum_stress'])
-            total_energes.append(results['energy_no_entropy'])
-
-        fig = plt.figure()
-        ax1 = fig.add_axes((0.15, 0.1, 0.35,  0.35))
-        ax2 = fig.add_axes((0.63, 0.1, 0.35, 0.35))
-        ax3 = fig.add_axes((0.15, 0.55, 0.35, 0.35))
-        ax4 = fig.add_axes((0.63, 0.55, 0.35, 0.35))
-        aiidaplot.line_chart(
-                ax1,
-                relax_times,
-                volumes,
-                'relax times',
-                'volume [angstrom]')
-        aiidaplot.line_chart(
-                ax2,
-                relax_times,
-                maximum_forces,
-                'relax times',
-                'maximum force')
-        aiidaplot.line_chart(
-                ax3,
-                relax_times,
-                maximum_stresses,
-                'relax times',
-                'maximum stress')
-        aiidaplot.line_chart(
-                ax4,
-                relax_times,
-                total_energes,
-                'relax times',
-                'total energy')
-        fig.suptitle('relux result pk: %s' % pk)
+def _export_relax(pk, show):
 
     aiida_relax = AiidaRelaxWorkChain(load_node(pk))
     aiida_relax.get_description()
-    # data = get_relax_data(pk)
-    # _get_fig(data['steps'])
-    # if get_data:
-    #     warnings.warn("--get_data is future removed.")
-    #     # filename = 'pk'+str(pk)+'_relax.yaml'
-    #     # dic2yaml(data, filename)
-    #     # plt.savefig('pk'+str(pk)+'_relax.png')
-    # if show:
-    #     plt.show()
+    if show:
+        aiida_relax.plot_convergence()
 
 @with_dbenv()
 def main(pk, get_data=False, show=False, ev_range=4., ymax=None):
@@ -339,7 +287,7 @@ def main(pk, get_data=False, show=False, ev_range=4., ymax=None):
         if workchain_name == 'VaspWorkChain':
             _export_vasp(pk)
         elif workchain_name == 'RelaxWorkChain':
-            _export_relax(pk, get_data, show)
+            _export_relax(pk, show)
         elif workchain_name == 'PhonopyWorkChain':
             _export_phonon(pk, get_data, show)
         elif workchain_name == 'ShearWorkChain':
