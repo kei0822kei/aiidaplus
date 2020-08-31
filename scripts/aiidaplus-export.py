@@ -29,7 +29,10 @@ from twinpy.common.kpoints import get_mesh_offset_from_direct_lattice
 from twinpy.interfaces.aiida import (
         AiidaVaspWorkChain,
         AiidaRelaxWorkChain,
+        AiidaPhonopyWorkChain,
+        AiidaTwinBoudnaryRelaxWorkChain,
         )
+from twinpy.plot.twinboundary import plane_diff
 
 RELAX_WF = WorkflowFactory('vasp.relax')
 
@@ -43,6 +46,8 @@ def get_argparse():
         help="get data")
     parser.add_argument('--show', action='store_true',
         help="show the detailed information of data")
+    parser.add_argument('--additional_relax_pks', type=str, default='',
+        help="additional relax pks")
     parser.add_argument('--ev_range', type=float, default=4.,
         help="eV range when sheft energy plot is activated")
     parser.add_argument('--ymax', type=float, default=None,
@@ -124,32 +129,43 @@ def _export_structure(pk, get_data, show):
         dic2yaml(data, filename)
 
 
-def _export_twinboundary_relax(pk, get_data, show, ymax):
-    """
-    Notes:
-        'max_force' means the max force acting on atoms in the final static
-        force calculation.
-    """
-    data = get_twinboundary_relax_data(pk)
+# def _export_twinboundary_relax(pk, get_data, show, ymax):
+#     """
+#     Notes:
+#         'max_force' means the max force acting on atoms in the final static
+#         force calculation.
+#     """
+#     data = get_twinboundary_relax_data(pk)
+#     if show:
+#         max_forces = [ get_relax_data(relax_pk)['max_force']
+#                            for relax_pk in data['relax_pks'] ]
+#         steps = [ i+1 for i in range(len(max_forces)) ]
+# 
+#         fig = plt.figure()
+#         ax = fig.add_subplot(111)
+#         aiidaplot.line_chart(ax,
+#                              xdata=steps,
+#                              ydata=max_forces,
+#                              xlabel='steps',
+#                              ylabel='max force on atom')
+#         ax.set_ylim(0., ymax)
+#         plt.title("twinboudnary relax: max force acting on atom")
+#         plt.show()
+# 
+#     if get_data:
+#         filename = 'pk'+str(pk)+'_twinboundary_relax.yaml'
+#         dic2yaml(data, filename)
+
+
+def _export_twinboundary_relax(pk, show, additional_relax_pks=[]):
+    tb_relax = AiidaTwinBoudnaryRelaxWorkChain(load_node(pk))
+    tb_relax.set_additional_relax(additional_relax_pks)
+    tb_relax.get_description()
     if show:
-        max_forces = [ get_relax_data(relax_pk)['max_force']
-                           for relax_pk in data['relax_pks'] ]
-        steps = [ i+1 for i in range(len(max_forces)) ]
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        aiidaplot.line_chart(ax,
-                             xdata=steps,
-                             ydata=max_forces,
-                             xlabel='steps',
-                             ylabel='max force on atom')
-        ax.set_ylim(0., ymax)
-        plt.title("twinboudnary relax: max force acting on atom")
+        tb_relax.plot_convergence()
+        tb_relax.plot_plane_diff(is_fractional=True)
+        tb_relax.plot_angle_diff(is_fractional=True)
         plt.show()
-
-    if get_data:
-        filename = 'pk'+str(pk)+'_twinboundary_relax.yaml'
-        dic2yaml(data, filename)
 
 
 def _export_twinboundary(pk, get_data, show, ev_range=4.):
@@ -220,13 +236,12 @@ def _export_twinboundary_shear(pk, get_data, show):
 
 
 def _export_phonon(pk, get_data, show):
-    data, phonon = get_phonon_data(pk, get_phonon=True)
+    aiph = AiidaPhonopyWorkChain(load_node(pk))
+    aiph.get_description()
+
     if show:
-        pmgstructure = load_node(pk).inputs.structure.get_pymatgen_structure()
-        mesh = get_mesh_offset_from_direct_lattice(
-                lattice=pmgstructure.lattice.matrix,
-                interval=0.15,
-                include_two_pi=True)['mesh']
+        phonon = aiph.get_phonon()
+        mesh = aiph.phonon_settings['mesh']
         print("run total dos with mesh: {}".format(mesh))
         phonon.run_mesh(mesh)
         phonon.run_total_dos()
@@ -236,10 +251,7 @@ def _export_phonon(pk, get_data, show):
                                    npoints=51)
         phonon.plot_band_structure_and_dos().show()
     if get_data:
-        filename = 'pk'+str(pk)+'_phonon.yaml'
-        phonon_filename = 'pk'+str(pk)+'_phonopy.yaml'
-        dic2yaml(data, filename)
-        phonon.save(phonon_filename)
+        aiph.export_phonon()
 
 
 def _export_vasp(pk):
@@ -255,7 +267,8 @@ def _export_relax(pk, show):
         aiida_relax.plot_convergence()
 
 @with_dbenv()
-def main(pk, get_data=False, show=False, ev_range=4., ymax=None):
+def main(pk, get_data=False, show=False, ev_range=4., ymax=None,
+         additional_relax_pks=[],):
     """
     export specified pk data
 
@@ -295,7 +308,7 @@ def main(pk, get_data=False, show=False, ev_range=4., ymax=None):
         # elif workchain_name == 'TwinBoundaryWorkChain':
         #     _export_twinboundary(pk, get_data, show, ev_range)
         elif workchain_name == 'TwinBoundaryRelaxWorkChain':
-            _export_twinboundary_relax(pk, get_data, show, ymax)
+            _export_twinboundary_relax(pk, show, additional_relax_pks)
         elif workchain_name == 'TwinBoundaryShearWorkChain':
             _export_twinboundary_shear(pk, get_data, show)
         else:
@@ -306,4 +319,6 @@ def main(pk, get_data=False, show=False, ev_range=4., ymax=None):
 
 if __name__ == '__main__':
     args = get_argparse()
-    main(args.node_pk, args.get_data, args.show, args.ev_range, args.ymax)
+    additional_relax_pks = list(map(int, args.additional_relax_pks.split()))
+    main(args.node_pk, args.get_data, args.show, args.ev_range, args.ymax,
+         additional_relax_pks)

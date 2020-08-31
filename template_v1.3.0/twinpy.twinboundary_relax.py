@@ -2,12 +2,15 @@
 
 import argparse
 from copy import deepcopy
+from aiida import load_profile
 from aiida.plugins import WorkflowFactory
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.engine import submit
 from aiida.orm import (load_node, Dict,
                        Group, Int, Str)
-from aiidaplus.get_data import get_relax_data
+from twinpy.interfaces.aiida import AiidaRelaxWorkChain
+
+load_profile()
 
 
 def get_argparse():
@@ -35,12 +38,14 @@ def get_argparse():
 
 args = get_argparse()
 
+
 # ----------
 # relax data
 # ----------
 relax_pk = 255907  # aiida Ti
 # relax_pk = 255939  # aiida Mg
-data = get_relax_data(relax_pk)
+aiida_relax = AiidaRelaxWorkChain(load_node(relax_pk))
+vasp_settings = aiida_relax.get_vasp_settings()
 
 
 # ---------------
@@ -57,22 +62,21 @@ clean_workdir = True
 # ---------
 # structure
 # ---------
-structure_pk = data['final_structure_pk']
+structure_pk = aiida_relax.get_pks()['final_structure_pk']
 
 
 # ------
 # potcar
 # ------
-potential_family = data['steps']['step_00']['potential_family']
-potential_mapping = data['steps']['step_00']['potential_mapping']
+potential_family = vasp_settings['potcar']['potential_family']
+potential_mapping = vasp_settings['potcar']['potential_mapping']
 
 
 # -----
 # incar
 # -----
-incar_settings = data['steps']['step_00']['incar']
+incar_settings = vasp_settings['incar']
 incar_settings['ediff'] = 1e-07
-del incar_settings['relax']
 
 
 # --------------

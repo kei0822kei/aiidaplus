@@ -5,6 +5,7 @@ This script is used when restart vasp job modifying some parameters.
 """
 
 import argparse
+from aiida import load_profile
 from aiida.plugins import WorkflowFactory
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.common.extendeddicts import AttributeDict
