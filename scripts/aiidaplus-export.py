@@ -159,7 +159,8 @@ def _export_structure(pk, get_data, show):
 
 def _export_twinboundary_relax(pk, show, additional_relax_pks=[]):
     tb_relax = AiidaTwinBoudnaryRelaxWorkChain(load_node(pk))
-    tb_relax.set_additional_relax(additional_relax_pks)
+    if len(additional_relax_pks) != 0:
+        tb_relax.set_additional_relax(additional_relax_pks)
     tb_relax.get_description()
     if show:
         tb_relax.plot_convergence()
@@ -265,6 +266,7 @@ def _export_relax(pk, show):
     aiida_relax.get_description()
     if show:
         aiida_relax.plot_convergence()
+        plt.show()
 
 @with_dbenv()
 def main(pk, get_data=False, show=False, ev_range=4., ymax=None,

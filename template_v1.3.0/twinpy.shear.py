@@ -133,7 +133,8 @@ incar_settings.update(smearing_settings)
 phonon_conf = {
     'distance': 0.03,
     'mesh': [18, 18, 10],
-    'supercell_matrix': [4, 4, 3],
+    # 'supercell_matrix': [4, 4, 3],
+    'supercell_matrix': [2, 2, 2],
     'symmetry_tolerance': 1e-5
     }
 

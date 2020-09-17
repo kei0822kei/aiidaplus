@@ -17,6 +17,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.core.structure import Structure
 from pymatgen.io.phonopy import get_pmg_structure
 from aiidaplus.get_data import get_structure_data_from_pymatgen
+from twinpy.structure.standardize import StandardizeCell
 import spglib
 
 # argparse
@@ -188,25 +189,17 @@ def standardize_structure(pmgstruct,
             structure = struct_analyzer.get_conventional_standard_structure()
     elif engine == 'phonopy':
         cell = get_cell_from_pmgstructure(pmgstruct)
-        numbers = get_atomic_numbers(cell[2])
-        cell_spglib = (cell[0], cell[1], numbers)
-
-        if structure_type == 'primitive':
+        std = StandardizeCell(cell=cell)
+        if structure_type =='primitive':
             to_primitive = True
         else:
             to_primitive = False
-        std_cell = spglib.standardize_cell(cell=cell_spglib,
-                                           to_primitive=to_primitive,
-                                           symprec=symprec)
-        if not no_sort:
-            num_atoms, unique_symbols, scaled_positions, _ = \
-                sort_positions_by_symbols(symbols=get_chemical_symbols(std_cell[2]),
-                                          positions=std_cell[1])
-            symbols = []
-            for num, symbol in zip(num_atoms, unique_symbols):
-                symbols.extend([symbol] * num)
-
-            std_cell = (std_cell[0], scaled_positions, symbols)
+        std_cell = std.get_standardized_cell(
+                       to_primitive=to_primitive,
+                       no_idealize=False,
+                       symprec=symprec,
+                       no_sort=no_sort,
+                       )
 
         structure = Structure(lattice=std_cell[0],
                               coords=std_cell[1],
