@@ -10,13 +10,14 @@ from aiida.common.extendeddicts import AttributeDict
 from aiida.engine import run, submit
 from aiida.orm import (load_node, Bool, Code, Dict, Float,
                        Group, Int, Str, KpointsData)
-from twinpy.structure import (get_pymatgen_structure,
-                              make_supercell,
-                              HexagonalClosePacked)
+from aiida_twinpy.common.structure import get_cell_from_aiida
+from pymatgen.io.phonopy import get_pmg_structure
+from twinpy.api_twinpy import get_twinpy_from_cell
 from aiidaplus.utils import (get_kpoints,
                              get_default_potcar_mapping,
                              get_elements_from_aiidastructure,
                              get_encut)
+from aiidaplus.get_data import get_relax_data
 
 def get_argparse():
     parser = argparse.ArgumentParser(
@@ -32,80 +33,38 @@ def get_argparse():
 
 args = get_argparse()
 
-@with_dbenv()
-def get_elements(pk):
-    node = load_node(pk)
-    elements = get_elements_from_aiidastructure(node)
-    return elements
+#-----------
+# relax data
+#-----------
+relax_pk = 6548  # aiida
+data = get_relax_data(relax_pk)
 
 #----------------
 # common settings
 #----------------
 wf = 'twinpy.shear'
-label = "this is label"
-description = "this is description"
-# dry_run = True
+label = "twinpy shear calc using relax result (pk: {})".format(relax_pk)
+description = label
 dry_run = False
+# dry_run = True
 is_phonon = True
-max_wallclock_seconds_relax = 10 * 3600
-max_wallclock_seconds_phonon = 10 * 3600
-clean_workdir = False
+max_wallclock_seconds_relax = 100 * 3600
+max_wallclock_seconds_phonon = 100 * 3600
+clean_workdir = True
 
 #----------------------
 # twinpy shear settings
 #----------------------
 shear_conf = {
         'twinmode': '10-12',
-        'grids': 2,
+        'dim': [1,1,1],
+        'xshift': 0.,
+        'yshift': 0.,
+        # 'grids': 2,
+        'grids': 5,
+        'structure_type': 'primitive',
+        # 'structure_type': 'primitive'  # or 'conventional' or ''
         }
-
-#----------
-# structure
-#----------
-structure_pk = 4775  # Ti
-elements = get_elements(structure_pk)
-
-#-------
-# potcar
-#-------
-potential_family = 'PBE.54'
-potential_mapping = get_default_potcar_mapping(elements)
-# potential_mapping = {
-#         'Na': 'Na',
-#         'Cl': 'Cl'
-#         }
-
-#------
-# incar
-#------
-### base setting
-incar_settings = {
-    'addgrid': True,
-    # 'ediff': 1e-6,
-    'ediff': 1e-2,
-    'gga': 'PS',
-    'ialgo': 38,
-    'lcharg': False,
-    'lreal': False,
-    'lwave': False,
-    'npar': 4,
-    'prec': 'Accurate',
-    }
-
-### encut
-# encut = 300
-encut = get_encut(potential_family=potential_family,
-                  potential_mapping=potential_mapping,
-                  multiply=1.3)
-
-incar_settings['encut'] = encut
-
-## for metal
-smearing_settings = {
-    'ismear': 1,
-    'sigma': 0.4
-    }
-incar_settings.update(smearing_settings)
 
 #---------------
 # phonon_conf
@@ -113,59 +72,39 @@ incar_settings.update(smearing_settings)
 
 phonon_conf = {
     'distance': 0.03,
-    'mesh': [13, 13, 13],
+    'mesh': [18, 18, 10],
     'supercell_matrix': [2, 2, 2],
     'symmetry_tolerance': 1e-5
     }
 
+#----------
+# structure
+#----------
+structure_pk = data['final_structure_pk']
 
+#-------
+# potcar
+#-------
+potential_family = data['steps']['step_00']['potential_family']
+potential_mapping = data['steps']['step_00']['potential_mapping']
 
-#---------------
-# relax_settings
-#---------------
-relax_conf = {
-    'algo': 'rd',  # you can also choose 'cg' (default)
-    'steps': 40,
-    'convergence_absolute': False,
-    # 'convergence_max_iterations': 3,
-    'convergence_max_iterations': 1,
-    'convergence_on': True,
-    'convergence_positions': 0.01,
-    # 'force_cutoff': 0.0001,
-    'force_cutoff': 0.01,
-    }
+#-------------------------
+# incar and relax settings
+#-------------------------
+incar_settings = data['steps']['step_00']['incar']
+relax_conf = incar_settings['relax']
+del incar_settings['relax']
+parser_settings = data['steps']['step_00']['parser_settings']
 
-#--------
-# kpoints
-#--------
-# kpoints = {
-#     'mesh': [6, 6, 6],
-#     'kdensity': None,
-#     'offset': [0.5, 0.5, 0.5]
-#     # 'offset': [0.5, 0.5, 0.5]
-#     }
-### not use kdensity
-# kpoints = {
-#     'mesh': [6, 6, 6],
-#     'kdensity': None,
-#     'offset': None
-#     # 'offset': [0.5, 0.5, 0.5]
-#     }
-### use kdensity
-kpoints = {
-    'mesh': None,
-    'kdensity': 0.2,
-    'offset': None
-    # 'offset': [0.5, 0.5, 0.5]
-    }
+#------------------------
+# kpoints for fc2 and nac
+#------------------------
+kpoints_relax = data['steps']['step_00']['kpoints']
 
-#---------------
-# kpoints_phonon
-#---------------
-### use kdensity
 kpoints_phonon = {
     'mesh': None,
-    'kdensity': 0.2,
+    'interval': kpoints_relax['intervals'],
+    'offset': kpoints_relax['offset']
     }
 
 
@@ -203,19 +142,28 @@ def main(computer,
     builder.shear_conf = Dict(dict=shear_conf)
 
     # vasp settings
-    pmgstructure = builder.structure.get_pymatgen()
-    hexagonal = HexagonalClosePacked.from_pmgstructure(pmgstructure)
-    hexagonal.set_parent(twinmode=shear_conf['twinmode'])
-    kpoints_relax = get_kpoints(structure=hexagonal.get_parent_structure(),
-                                mesh=kpoints['mesh'],
-                                kdensity=kpoints['kdensity'],
-                                offset=kpoints['offset'])
-    supercell =  hexagonal.get_parent_structure(
-                        dim=np.array(phonon_conf['supercell_matrix']))
-    kpoints_phonon = get_kpoints(structure=supercell,
-                                 mesh=kpoints['mesh'],
-                                 kdensity=kpoints['kdensity'],
-                                 offset=kpoints['offset'])
+    # hexagonal = get_twinpy_structure_from_structure(builder.structure)
+    # hexagonal.set_parent(twinmode=shear_conf['twinmode'])
+    # hexagonal.set_is_primitive(shear_conf['is_primitive'])
+    # hexagonal.run()
+    # pmgparent = hexagonal.get_pymatgen_structure()
+    cell = get_cell_from_aiida(builder.structure,
+                               get_scaled_positions=True)
+    twinpy = get_twinpy_from_cell(cell=cell,
+                                  twinmode=shear_conf['twinmode'])
+    twinpy.set_shear(xshift=shear_conf['xshift'],
+                     yshift=shear_conf['yshift'],
+                     dim=shear_conf['dim'],
+                     shear_strain_ratio=0.)
+    ph_shear = twinpy.get_shear_phonopy_structure(
+                   structure_type=shear_conf['structure_type'])
+    pmgstructure = get_pmg_structure(ph_shear)
+    supercell = deepcopy(pmgstructure)
+    supercell.make_supercell(phonon_conf['supercell_matrix'])
+    kpoints_ph = get_kpoints(structure=supercell,
+                             mesh=kpoints_phonon['mesh'],
+                             interval=kpoints_phonon['interval'],
+                             offset=kpoints_phonon['offset'])
     base_settings = {
             'vasp_code': 'vasp544mpi',
             'incar_settings': incar_settings,
@@ -224,15 +172,16 @@ def main(computer,
             }
     relax_settings = deepcopy(base_settings)
     relax_settings.update({
-        'kpoints': kpoints_relax,
+        'kpoints': {'mesh': kpoints_relax['mesh'], 'offset': kpoints_relax['offset']},
         'options': {'queue_name': queue,
                     'max_wallclock_seconds': max_wallclock_seconds_relax},
         'relax_conf': relax_conf,
         'clean_workdir': clean_workdir,
+        'parser_settings': parser_settings,
         })
     phonon_settings = deepcopy(base_settings)
     phonon_settings.update({
-        'kpoints': kpoints_phonon,
+        'kpoints': {'mesh': kpoints_ph['mesh'], 'offset': kpoints_ph['offset']},
         'options': {'queue_name': queue,
                     'max_wallclock_seconds': max_wallclock_seconds_phonon},
         'phonon_conf': phonon_conf,

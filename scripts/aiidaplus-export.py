@@ -20,19 +20,15 @@ from aiidaplus.get_data import (get_structure_data,
                                 get_relax_data,
                                 get_phonon_data,
                                 get_shear_data,
-                                # get_twinboundary_data,
                                 get_twinboundary_relax_data,
                                 )
 from aiidaplus import plot as aiidaplot
 from twinpy.common.kpoints import get_mesh_offset_from_direct_lattice
-# from twinpy.interfaces.aiida import AiidaRelaxWorkChain
-from twinpy.interfaces.aiida import (
-        AiidaVaspWorkChain,
-        AiidaRelaxWorkChain,
-        AiidaPhonopyWorkChain,
-        AiidaTwinBoudnaryRelaxWorkChain,
-        )
-from twinpy.plot.twinboundary import plane_diff
+from twinpy.interfaces.aiida.vasp import (AiidaVaspWorkChain,
+                                          AiidaRelaxWorkChain)
+from twinpy.interfaces.aiida.phonopy import AiidaPhonopyWorkChain
+from twinpy.interfaces.aiida.twinboundary \
+        import AiidaTwinBoudnaryRelaxWorkChain
 
 RELAX_WF = WorkflowFactory('vasp.relax')
 
@@ -157,15 +153,17 @@ def _export_structure(pk, get_data, show):
 #         dic2yaml(data, filename)
 
 
-def _export_twinboundary_relax(pk, show, additional_relax_pks=[]):
+def _export_twinboundary_relax(pk, show, additional_relax_pks=None):
     tb_relax = AiidaTwinBoudnaryRelaxWorkChain(load_node(pk))
-    if len(additional_relax_pks) != 0:
-        tb_relax.set_additional_relax(additional_relax_pks)
     tb_relax.get_description()
     if show:
-        tb_relax.plot_convergence()
-        tb_relax.plot_plane_diff(is_fractional=True)
-        tb_relax.plot_angle_diff(is_fractional=True)
+        aiida_relax = tb_relax.get_aiida_relax(
+                additional_relax_pks=additional_relax_pks)
+        tb_analyzer = tb_relax.get_twinboundary_analyzer(
+                additional_relax_pks=additional_relax_pks)
+        aiida_relax.plot_convergence()
+        tb_analyzer.plot_plane_diff()
+        tb_analyzer.plot_angle_diff()
         plt.show()
 
 
@@ -261,7 +259,6 @@ def _export_vasp(pk):
 
 
 def _export_relax(pk, show):
-
     aiida_relax = AiidaRelaxWorkChain(load_node(pk))
     aiida_relax.get_description()
     if show:

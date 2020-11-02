@@ -7,8 +7,8 @@ from aiida.engine import submit
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida.orm import load_node, Bool, Dict, Group, Str, Float
 from aiidaplus.utils import (get_default_potcar_mapping,
-                             get_elements_from_aiidastructure,
                              get_encut)
+from twinpy.interfaces.aiida import AiidaRelaxWorkChain
 
 
 def get_argparse():
@@ -38,18 +38,41 @@ args = get_argparse()
 
 
 @with_dbenv()
-def get_elements(pk):
-    node = load_node(pk)
-    elements = get_elements_from_aiidastructure(node)
-    return elements
+def get_AiidaRelaxWorkChain(relax_pk):
+    relax = AiidaRelaxWorkChain(node=load_node(relax_pk))
+    return relax
+
+
+# ======= EDIT HERE ================================
+
+relax_pk = 7887  # relax  Mg_pv
+label = "this is label"
+description = "this is description"
+
+shear_conf = {
+        'twinmode': '10-12',
+        'grids': 5,
+        }
+
+supercell_matrix = [2, 2, 2]
+mesh_phonon = [9, 9, 6]
+use_kpoints_interval = True
+kpoints_interval = 0.15
+
+# ======= EDIT HERE ================================
+
+
+# -----------------------
+# get AiidaRelaxWorkChain
+# -----------------------
+relax = get_AiidaRelaxWorkChain(relax_pk=relax_pk)
+inputs = relax.get_vasp_settings()
 
 
 # ---------------
 # common settings
 # ---------------
 wf = 'twinpy.shear'
-label = "this is label"
-description = "this is description"
 dry_run = False
 # dry_run = True
 is_phonon = True
@@ -59,149 +82,58 @@ clean_workdir = True
 vasp_code = 'vasp544mpi'
 
 
-# ---------------------
-# twinpy shear settings
-# ---------------------
-shear_conf = {
-        'twinmode': '10-12',
-        'grids': 5,
-        }
-
-
-# ---------
-# structure
-# ---------
-# structure_pk = 11850  # Ti, glass database
-structure_pk = 6836     # Ti_c, aiida database
-# structure_pk = 5024   # Ti_d, aiida database
-elements = get_elements(structure_pk)
-
-
-# ------
-# potcar
-# ------
-potential_family = 'PBE.54'
-potential_mapping = get_default_potcar_mapping(elements)
-# potential_mapping = {
-#         'Na': 'Na',
-#         'Cl': 'Cl'
-#         }
-
-
-# -----
-# incar
-# -----
-
-# ============
-# base setting
-# ============
-incar_settings = {
-    'addgrid': True,
-    'ediff': 1e-8,
-    'gga': 'PS',
-    'ialgo': 38,
-    'lcharg': False,
-    'lreal': False,
-    'lwave': False,
-    'npar': 4,
-    'prec': 'Accurate',
-    }
-
-# =====
-# encut
-# =====
-encut = 375
-# encut = get_encut(potential_family=potential_family,
-#                   potential_mapping=potential_mapping,
-#                   multiply=1.3)
-
-incar_settings['encut'] = encut
-
-# =====
-# smear
-# =====
-smearing_settings = {
-    'ismear': 1,
-    'sigma': 0.4
-    }
-incar_settings.update(smearing_settings)
-
-
 # -----------
 # phonon_conf
 # -----------
 phonon_conf = {
     'distance': 0.03,
     'mesh': [18, 18, 10],
-    # 'supercell_matrix': [4, 4, 3],
-    'supercell_matrix': [2, 2, 2],
+    'supercell_matrix': supercell_matrix,
     'symmetry_tolerance': 1e-5
     }
-
-
-# --------------
-# relax_settings
-# --------------
-# volume and shape relaxation is False by default
-relax_conf = {
-    'perform': True,
-    'positions': True,
-    'volume': False,
-    'shape': False,
-    'algo': 'rd',  # default 'cg'
-    'steps': 40,
-    'convergence_absolute': False,
-    'convergence_max_iterations': 3,
-    # 'convergence_max_iterations': 10,
-    'convergence_on': True,
-    'convergence_positions': 0.01,
-    # 'force_cutoff': 0.0001,
-    'force_cutoff': 1e-7,
-
-    }
-
-# 'add_structure': True is automatically set
-parser_settings = {
-    'add_misc': True,
-    'add_kpoints': True,
-    'add_energies': True,
-    'add_forces': True,
-    'add_stress': True,
-
-    # +++++++++++++++++++++++++++++++++++++++
-    # before activate parameters below
-    # always chech whether is works
-    # detail see parser/vasp.py in aiida-vasp
-    # +++++++++++++++++++++++++++++++++++++++
-
-    # 'add_dynmat': True,
-    # 'add_hessian': True,
-    # 'add_poscar-structure': True,
-    # 'add_trajectory': True,
-    # 'add_bands': False,
-    # 'add_dos': False,
-    # 'add_projectors': True,
-    # 'add_born_charges': False,
-    # 'add_chgcar': False,
-    # 'add_wavecar': False,
-}
-
 
 # -------
 # kpoints
 # -------
 kpoints = {
-    # 'mesh': [8, 8, 6],
-    # 'offset': [0., 0., 0.5],
+    'mesh': inputs['kpoints'][0],
+    'offset': inputs['kpoints'][1],
     }
 
 kpoints_phonon = {
-    # 'mesh': [2, 2, 2],
-    # 'offset': [0., 0., 0.5],
+    'mesh': mesh_phonon,
+    'offset': inputs['kpoints'][1],
     }
 
-use_kpoints_interval = True
-kpoints_interval = 0.15
+
+# ---------
+# structure
+# ---------
+structure_pk = relax.get_pks()['final_structure_pk']
+
+
+# ------
+# potcar
+# ------
+potential_family = inputs['potcar']['potential_family']
+potential_mapping = inputs['potcar']['potential_mapping']
+
+
+# -----
+# incar
+# -----
+incar_settings = inputs['incar']
+
+
+# --------------
+# relax_settings
+# --------------
+relax_conf = relax.get_relax_settings()
+relax_conf['perform'] = True
+relax_conf['positions'] = True
+relax_conf['volume'] = False
+relax_conf['shape'] = False
+parser_settings = inputs['parser_settings']
 
 
 def check_group_existing(group):
