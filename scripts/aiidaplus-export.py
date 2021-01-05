@@ -250,8 +250,15 @@ def _export_phonon(pk, get_data, show):
                                    npoints=51)
         phonon.plot_band_structure_and_dos().show()
     if get_data:
-        aiph.export_phonon()
+        analyzer = aiph.get_phonon_analyzer()
+        filename = 'pk' + str(pk) + '_phonopy_params.yaml'
+        analyzer.export_phonon(filename=filename)
 
+
+def _export_kpoints(pk):
+    kpt = load_node(pk)
+    print("# kpoints")
+    pprint(kpt.get_kpoints_mesh())
 
 def _export_vasp(pk):
     aiida_vasp = AiidaVaspWorkChain(load_node(pk))
@@ -294,6 +301,8 @@ def main(pk, get_data=False, show=False, ev_range=4., ymax=None,
     node = load_node(pk)
     if node.node_type == 'data.structure.StructureData.':
         _export_structure(pk, get_data, show)
+    elif node.node_type == 'data.array.kpoints.KpointsData.':
+        _export_kpoints(pk)
     elif node.node_type == 'process.workflow.workchain.WorkChainNode.':
         workchain_name = node.process_class.get_name()
         if workchain_name == 'VaspWorkChain':

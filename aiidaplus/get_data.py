@@ -57,7 +57,7 @@ def get_structure_data_from_pymatgen(pmgstructure:Structure,
     Note:
         symprec=1e-5 (default), which is the same as VASP SYMPREC default
     """
-    analyzer = SpacegroupAnalyzer(pmgstructure, symprec=symprec)
+    analyzer = SpacegroupAnalyzer(pmgstructure, symprec=symprec, angle_tolerance=1e-2)
     dataset = analyzer.get_symmetry_dataset()
 
     dic = {}

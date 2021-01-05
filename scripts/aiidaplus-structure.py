@@ -93,7 +93,7 @@ def get_pmgstructure(filename, filetype, symprec):
         cif = pmgcif.CifParser(filename,
                                occupancy_tolerance=occupancy_tolerance,
                                site_tolerance=symprec)
-        pmgstruct = cif.get_structures()[0]
+        pmgstruct = cif.get_structures(primitive=False)[0]
     elif filetype == 'poscar':
         from pymatgen.io.vasp import inputs as pmginputs
         poscar = pmginputs.Poscar.from_file(filename)
